@@ -1,11 +1,5 @@
 import numba
-from numba.core import types
-from numba import int64, float64
-import numpy as np
-
-
-
-
+import math
 
 filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\tempfile.txt"
 target_filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\target.txt"
@@ -16,14 +10,14 @@ coord_filter = ["TEVE 0, 0, 0, 0, 0\n",
 "TEVE 0, 1, 0, 1, 1\n",
 "TEVE 0, 0, 1, 1, 1\n"]
 
-@numba.jit(nopython=True, forceobj=False)
+
 def DO_IT(vert_list,edge_list,pgon_list,
-            vert_indexes= numba.typed.Dict.empty(types.int32,types.int32),
-            removed_vert = numba.typed.Dict.empty(types.int32,types.int32),
-            new_vert_list = numba.typed.List.empty_list([float64, float64,float64]),
-            edge_indexes= numba.typed.Dict.empty(types.int32,types.int32),
-            removed_edge = numba.typed.Dict.empty(types.int32,types.int32),
-            new_edge_list = numba.typed.List.empty_list(float64),
+            vert_indexes={},
+            removed_vert = {},
+            new_vert_list = [],
+            edge_indexes={},
+            removed_edge = {},
+            new_edge_list = [],
             idx_offset = 0,
             vert_01 = (),
             vert_01_compare = (),
@@ -34,9 +28,9 @@ def DO_IT(vert_list,edge_list,pgon_list,
 
     # Remove duplicate verts and reassign idx
     # print("Step 1/5 - Removing useless vertices")
-    for idx, vertex in enumerate(vert_list):
+    for idx, vert in enumerate(vert_list):
         for compare_idx, compare_vert in enumerate(vert_list):
-            if idx < compare_idx and vertex == compare_vert:
+            if idx < compare_idx and vert == compare_vert:
                 if not idx + 1 in list(removed_vert.keys()):
                     # those two vertex are identical.
                     idx_offset = 0
@@ -53,7 +47,7 @@ def DO_IT(vert_list,edge_list,pgon_list,
                 if removed_idx < idx + 1:
                     idx_offset += 1
             vert_indexes[idx + 1] = idx + 1 - idx_offset
-            new_vert_list.append(vertex)
+            new_vert_list.append(vert)
             # print("new id of ", idx + 1 , " is ", idx + 1 - idx_offset)
 
     # print("Step 2/5 - Replacing edges pass 1 of 2")
@@ -131,9 +125,6 @@ def DO_IT(vert_list,edge_list,pgon_list,
     return new_vert_list, fixed_edge_list, new_faces_list
 
 def JUST(vert_list, edge_list, pgon_list):
-    vert_list = np.asarray(vert_list, dtype="float64")
-    edge_list = numba.typed.List(edge_list)
-    pgon_list = numba.typed.List(pgon_list)
     new_vert_list, fixed_edge_list, new_faces_list = DO_IT(vert_list, edge_list, pgon_list)
     group = []
     for idx, vert in enumerate(new_vert_list):
@@ -166,7 +157,6 @@ with open(filepath) as file:
                 print(f"Treating polygon group {group_number} out of {total_group}")
                 new_file.append(line.rstrip("\n"))
                 vert_list = []
-
                 # TEVE x, y, z, u, v
                 edge_list = []
                 # EDGE vert1, vert2, pgon1, pgon2, status
@@ -175,7 +165,7 @@ with open(filepath) as file:
             elif line.startswith("TEVE"):
                 if not line in coord_filter:
                     vert = line.lstrip("TEVE").split(",")
-                    vert_list.append([float64(vert[0]), float64(vert[1]), float64(vert[2]), float64(vert[3]), float64(vert[4])])
+                    vert_list.append([float(vert[0]), float(vert[1]), float(vert[2]), float(vert[3]), float(vert[4])])
             elif line.startswith("EDGE"):
                 edge = line.lstrip("EDGE").split(",")
                 edge_list.append([int(edge[0]), int(edge[1]), int(edge[2]), int(edge[3]), int(edge[4])])
@@ -197,9 +187,11 @@ with open(filepath) as file:
             else:
                 new_file.append(line.rstrip("\n"))
 
+print("writing file...")
 with open(target_filepath, 'w') as target_file:
     for item in new_file:
         target_file.write("%s\n" % item)
+print("file saved to " + target_filepath)
 
 #for i in new_file:
 #    print(i)
