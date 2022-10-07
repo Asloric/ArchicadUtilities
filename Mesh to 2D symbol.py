@@ -11,6 +11,7 @@ initial_objects = list(bpy.context.view_layer.objects)
 
 try:
     bpy.ops.preferences.addon_enable(module="render_freestyle_svg")
+    bpy.ops.preferences.addon_enable(module="io_export_dxf")
 except:
     pass
 
