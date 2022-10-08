@@ -7,8 +7,10 @@ import sys
 #    subprocess.check_call([sys.executable, "-m", "pip", "install", "numba"])
 #from numba import jit
 
-import cProfile
-from pstats import Stats, SortKey
+
+filepath = "C:\\Users\\Asloric\\Desktop\\tempfile.txt"
+target_filepath = "C:\\Users\\Asloric\\Desktop\\target.txt"
+
 
 
 class TEVE():
@@ -159,6 +161,9 @@ def convert_to_archicad():
             stats.print_stats()
 
 def run_script():
+    global filepath
+    global target_filepath
+    
     global PGON
     ob = bpy.context.active_object
     me = ob.data
@@ -213,8 +218,6 @@ def run_script():
 
     new_file = teve_list + edge_list + PGON
 
-    filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\tempfile.txt"
-    target_filepath = "C:\\Users\\Asloric\\Desktop\\target.txt"
 
 
     print("writing file...")
@@ -226,3 +229,5 @@ def run_script():
     TEVE.clear()
     EDGE.clear()
     PGON = []
+    
+run_script()
