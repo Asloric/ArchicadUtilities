@@ -2,7 +2,7 @@ import bpy
 import os
 
 class ACACCF_PT_Main(bpy.types.Panel):
-    bl_label = ""
+    bl_label = "AGENCE CARRE"
     bl_idname = "ACACCF_PT_HEADER"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -12,8 +12,8 @@ class ACACCF_PT_Main(bpy.types.Panel):
 
 
     def draw(self, context):
-        button_row = self.layout.row(align=False)
-        button_row.operator("acaccf.export")
+        layout = self.layout.column(align=False)
+        layout.operator("acaccf.export", text="Export GDL")
         
 
 

@@ -53,7 +53,12 @@ class ACACCF_OT_export(bpy.types.Operator):
             target_file.write(xml)
         print("file saved to " + target_filepath)
 
-        subprocess.call(f'"C:\\Program Files\\GRAPHISOFT\\ARCHICAD 25\\LP_XMLConverter.exe" xml2libpart "{target_filepath}" "{self.save_path + self.object_name}.gsm"', shell=True)
+        # get lp_xmlconverter path
+        preferences = bpy.context.preferences.addons[__package__].preferences
+        lp_xmlconverter_path = preferences.LP_XMLConverter
+
+
+        subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{target_filepath}" "{self.save_path + self.object_name}.gsm"', shell=True)
         return{'FINISHED'}
 
     def invoke(self, context, event):
