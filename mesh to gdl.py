@@ -81,10 +81,19 @@ class EDGE():
 
     def __init__(self, v1, v2, smooth, bl_index):
         self.bl_index = bl_index
+        self.f1 = -1
+        self.f2 = -1
         self.v1 = v1
         self.v2 = v2
         self.smooth = smooth 
 
+    def add_face(self, face_id):
+        if self.f1 == -1:
+            self.f1 = face_id
+        elif self.f2 == -1:
+            self.f2 = face_id
+        else:
+            print("ERROR: MORE THAN 2 FACES FOR THIS EDGE")
 
     def __str__(self):
         return(str(self.index))
@@ -110,28 +119,49 @@ class EDGE():
             self.__class__.instances.append(self)
             self.__class__.rinstances.insert(0, self)
             setattr(self, "index", (self.__class__.instances.index(self)+1))
-            return self
+            return self, None
         
         # if mirroring edge is found, 
         elif not is_present and edge is not None:
-            print("DEBUG")
             self.__class__.instances.append(self)
             self.__class__.rinstances.insert(0, self)
             setattr(self, "index", (self.__class__.instances.index(edge)+1) * -1)
-            return self
+            return self, edge
 
-        else: return edge
+        else: return edge, None
 
     @classmethod
     def print(cls, edge = None):
         for edge in cls.instances:
-            print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, -1, -1, {1 if edge.smooth else 0}   !{edge.bl_index}     {edge.index}")
+            double_face = False
+            smooth = 262146
+            if edge.f2 and edge.f1:
+                double_face = True
+            if edge.smooth:
+                smooth = 1
+            elif double_face:
+                smooth = 262146
+            else:
+                smooth = 0
+            
+            print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.bl_index}")
 
     @classmethod
     def get_output(cls, edge = None):
         list = []
         for edge in cls.instances:
-            list.append(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, -1, -1, {1 if edge.smooth else 0}   !{edge.bl_index}     {edge.index} ")
+            double_face = False
+            smooth = 262146
+            if edge.f2 and edge.f1:
+                double_face = True
+            if edge.smooth:
+                smooth = 262146
+            elif double_face:
+                smooth = 262146
+            else:
+                smooth = 262146
+                
+            list.append(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.bl_index}")
         return list
 
     @staticmethod
@@ -155,6 +185,7 @@ class EDGE():
 PGON = []
 VECT_LIST = []
 
+face_id_bl2ac = {}
 
 def compare_verts_x_y_z(vert, previous_vert):
     if previous_vert is None:
@@ -190,8 +221,6 @@ def run_script():
 
     # For each face in the mesh
     for face in bm.faces:
-        print("Face number %s" %face.index)
-
         face_vertices = {}
         face_edges = {}
 
@@ -206,7 +235,7 @@ def run_script():
                 "%.3f" % loop[uv_layer].uv[1],
                 loop.vert.index
             )
-            print(loop.vert.index)
+
             # Get the edge angle with other faces
             edge_angle = loop.edge.calc_face_angle(99)
             if edge_angle == 99:
@@ -230,10 +259,14 @@ def run_script():
                     "%.3f" % face.loops[n_loop+1][uv_layer].uv[1],
                     loop.vert.index
                 )
-                #for i in dir(loop.edge):
-                #    print(i)
-                                    
-                face_edges[loop.edge.index] = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index) 
+                
+                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index)
+                
+                face_edges[loop.edge.index] = edge
+                
+                if existing_edge:
+                    edge = existing_edge
+                edge.add_face(len(PGON)+1)
 
             else:
                 face_vertices[0] = TEVE.new_teve(
@@ -244,27 +277,31 @@ def run_script():
                     "%.3f" % face.loops[0][uv_layer].uv[1],
                     loop.vert.index
                 )  
-
-                face_edges[loop.edge.index] = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index) 
+                
+                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index) 
+                face_edges[loop.edge.index] = edge
+                if existing_edge:
+                    edge = existing_edge
+                edge.add_face(len(PGON)+1)
 
         
         VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
         VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
         
         
-        #pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID}, 0, "
-        pgon_str = f"PGON {str(len(face.edges))}, 0, 0, "
+        pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID}, 2, "
+        #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
         for edge in face_edges.values():
-            pgon_str += str(edge) + ", "S
+            pgon_str += str(edge) + ", "
         VECT_LIST.append(VECT)
         PGON.append(pgon_str[:-2])
-        print(pgon_str[:-2])
+        #print(pgon_str[:-2])
 
     teve_list = TEVE.get_output()
     edge_list = EDGE.get_output()
 
 
-    new_file = teve_list + edge_list + PGON#  + VECT_LIST + PGON
+    new_file = teve_list + edge_list + VECT_LIST + PGON
 
 
 
