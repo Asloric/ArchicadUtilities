@@ -1,33 +1,54 @@
-import numba
-import math
+Folder = "Mobilier"
+Sub_folder1 = "Tables"
+FIle_name = "BIBELO_SWIMM_Table Duo"
+Lod = "0"
 
-filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\tempfile.txt"
-target_filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\target.txt"
+is_lod = True
+
 keep_material = True
+Use_soft_edges = True
+# ATTENTION:  NE PAS UTILISER LES SOFT EDGE REND L'OBJET INVISIBLE EN RENDU CROQUIS!!!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if is_lod:
+    filepath = f"C:\\Users\\clovis.flayols\\Desktop\\05_Scripts\\{Folder}\\{Sub_folder1}\\{FIle_name}_LOD{Lod}.txt"
+    target_filepath = f"C:\\Users\\clovis.flayols\\Desktop\\05_Scripts\\{Folder}\\{Sub_folder1}\\{FIle_name}_LOD{Lod}_opti.txt"
+else:
+    filepath = f"C:\\Users\\clovis.flayols\\Desktop\\05_Scripts\\{Folder}\\{Sub_folder1}\\{FIle_name}.txt"
+    target_filepath = f"C:\\Users\\clovis.flayols\\Desktop\\05_Scripts\\{Folder}\\{Sub_folder1}\\{FIle_name}_opti.txt"
+
 
 coord_filter = ["TEVE 0, 0, 0, 0, 0\n",
 "TEVE 1, 0, 0, 1, 1\n",
 "TEVE 0, 1, 0, 1, 1\n",
 "TEVE 0, 0, 1, 1, 1\n"]
 
+if Use_soft_edges:
+    edge_n_end = 2
+else:
+    edge_n_end = 0
 
-def DO_IT(vert_list,edge_list,pgon_list,
-            vert_indexes={},
-            removed_vert = {},
-            new_vert_list = [],
-            edge_indexes={},
-            removed_edge = {},
-            new_edge_list = [],
-            idx_offset = 0,
-            vert_01 = (),
-            vert_01_compare = (),
-            vert_02 = (),
-            vert_02_compare = (),
-):
-
-
+def DO_IT(vert_list,edge_list,pgon_list):
+    vert_indexes = {}
+    removed_vert = {}
+    new_vert_list = []
     # Remove duplicate verts and reassign idx
-    # print("Step 1/5 - Removing useless vertices")
     for idx, vert in enumerate(vert_list):
         for compare_idx, compare_vert in enumerate(vert_list):
             if idx < compare_idx and vert == compare_vert:
@@ -50,27 +71,28 @@ def DO_IT(vert_list,edge_list,pgon_list,
             new_vert_list.append(vert)
             # print("new id of ", idx + 1 , " is ", idx + 1 - idx_offset)
 
-    # print("Step 2/5 - Replacing edges pass 1 of 2")
     replaced_edge_list = []
     # Reassign edges vert indx
     for edge in edge_list:
         if edge[0] in list(removed_vert.keys()) or edge[1] in list(removed_vert.keys()):
-            replaced_edge_list.append([vert_indexes[edge[0]], vert_indexes[edge[1]], -1, -1, 2])
+            replaced_edge_list.append([vert_indexes[edge[0]], vert_indexes[edge[1]], -1, -1, edge_n_end])
         else:
-            replaced_edge_list.append([vert_indexes[edge[0]], vert_indexes[edge[1]], -1, -1, 2])
+            replaced_edge_list.append([vert_indexes[edge[0]], vert_indexes[edge[1]], -1, -1, 1])
 
-    # print("Step 3/5 - Replacing edges pass 3 of 2")
 
+    edge_indexes = {}
+    removed_edge = {}
+    new_edge_list = []
     # Remove duplicate edges
     for idx, edge, in enumerate(replaced_edge_list):
         for compare_idx, compare_edge in enumerate(replaced_edge_list):
             if idx < compare_idx:
-                if not idx + 1 in list(removed_edge.keys()):
+                if not idx + 1 in removed_edge.keys():
                     if edge[0] == compare_edge[0]:
                         if edge[1] == compare_edge[1]:
                             # print("similar edge")
                             idx_offset = 0
-                            for removed_idx in list(removed_edge.keys()):
+                            for removed_idx in removed_edge.keys():
                                 if removed_idx < idx + 1:
                                     # If there a idx less than the initial id, it means i have to decrease new idx by that number ammount
                                     idx_offset += 1
@@ -80,21 +102,20 @@ def DO_IT(vert_list,edge_list,pgon_list,
                         if edge[1] == compare_edge[0]:
                             # print("revered edge")
                             idx_offset = 0
-                            for removed_idx in list(removed_edge.keys()):
+                            for removed_idx in removed_edge.keys():
                                 if removed_idx < idx + 1:
                                     # If there a idx less than the initial id, it means i have to decrease new idx by that number ammount
                                     idx_offset += 1
                             edge_indexes[compare_idx + 1] = (idx + 1 - idx_offset) * -1
                             removed_edge[compare_idx + 1] = (idx + 1 - idx_offset) * -1
-        if not idx + 1 in list(removed_edge.keys()):
+        if not idx + 1 in removed_edge.keys():
             idx_offset = 0
-            for removed_idx in list(removed_edge.keys()):
+            for removed_idx in removed_edge.keys():
                 if removed_idx < idx + 1:
                     idx_offset += 1
             edge_indexes[idx + 1] = idx + 1 - idx_offset
             new_edge_list.append(edge)
 
-    # print("Step 4/5 - Replacing faces pass 1 of 2")
     fixed_edge_list = []
     for idx, edge, in enumerate(new_edge_list):
         for compare_idx, compare_edge in enumerate(new_edge_list):
@@ -114,7 +135,6 @@ def DO_IT(vert_list,edge_list,pgon_list,
 
         fixed_edge_list.append(edge)
 
-    # print("Step 5/5 - Replacing faces pass 2 of 2")
     new_faces_list = []
     for idx, face in enumerate(pgon_list):
         face[3] = edge_indexes[face[3]]
@@ -122,10 +142,7 @@ def DO_IT(vert_list,edge_list,pgon_list,
         face[5] = edge_indexes[face[5]]
         new_faces_list.append([3, 0, -1, face[3], face[4], face[5]])
 
-    return new_vert_list, fixed_edge_list, new_faces_list
 
-def JUST(vert_list, edge_list, pgon_list):
-    new_vert_list, fixed_edge_list, new_faces_list = DO_IT(vert_list, edge_list, pgon_list)
     group = []
     for idx, vert in enumerate(new_vert_list):
         group.append(f"TEVE {str(vert).lstrip('[').rstrip(']')}" + f"    !{idx+1}")
@@ -173,7 +190,7 @@ with open(filepath) as file:
                 pgon = line.lstrip("PGON").split(",")
                 pgon_list.append([int(pgon[0]), int(pgon[1]), int(pgon[2]), int(pgon[3]), int(pgon[4]), int(pgon[5])])
             elif line.startswith("BODY"):
-                group = JUST(vert_list, edge_list, pgon_list)
+                group = DO_IT(vert_list, edge_list, pgon_list)
                 for i in group:
                     new_file.append(i)
                 new_file.append(line.rstrip("\n"))
@@ -186,12 +203,13 @@ with open(filepath) as file:
                     new_file.append(line.rstrip("\n"))
             else:
                 new_file.append(line.rstrip("\n"))
-
-print("writing file...")
+                
+print("Rewriting file")
 with open(target_filepath, 'w') as target_file:
     for item in new_file:
         target_file.write("%s\n" % item)
-print("file saved to " + target_filepath)
+print("Conversion completed")
+print(f"FIle saved as {target_filepath}")
 
 #for i in new_file:
 #    print(i)
