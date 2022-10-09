@@ -48,7 +48,7 @@ class ACACCF_OT_export(bpy.types.Operator):
         
         def process_object(props, lod, is_placable, lod_number= None):
             if lod_number is not None:
-                object_name = lod.name + "_LOD" + str(lod_number)
+                object_name = props.object_name + "_LOD" + str(lod_number)
             else:
                 object_name = props.object_name
             bpy.context.view_layer.objects.active = lod
@@ -89,6 +89,7 @@ class ACACCF_OT_export(bpy.types.Operator):
                 target_file.write(xml)
             print("file saved to " + target_filepath)
 
+            bpy.ops.object.delete(use_global=True, confirm=False)
             return (size_x, size_y, size_z)
 
         def process_lod_xml(props, object_dimensions, ac_version):
@@ -119,18 +120,17 @@ class ACACCF_OT_export(bpy.types.Operator):
             i = 0
             for lod in [props.lod_0, props.lod_1]:
                 object_dimensions = process_object(props, lod, False, i)
+                subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', shell=True)
                 i += 1
             process_lod_xml(props, object_dimensions, ac_version)
+            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
+
         else:
             # Ensure at lease one object is being submitted to the process function
             lod = props.lod_1 if props.lod_1 else props.lod_0
             lod = context.active_object if not lod else lod
             process_object(props, lod, props.is_placable, None)
-            
-
-        subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-
-        bpy.ops.object.delete(use_global=True, confirm=False)
+            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         return{'FINISHED'}
 
@@ -145,9 +145,11 @@ class ACACCF_OT_export(bpy.types.Operator):
             if len(obj_a.data.polygons) < len(obj_b.data.polygons):
                 props.lod_0 = obj_b
                 props.lod_1 = obj_a
+                props.export_lod = True
             else:
                 props.lod_0 = obj_a
                 props.lod_1 = obj_b
+                props.export_lod = True
         else:
             props.lod_0 = context.active_object
         

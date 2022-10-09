@@ -199,17 +199,16 @@ hideparameter all "A", "B"
 		<WDWallInset>0</WDWallInset>
 	</ParamSectHeader>
 	<Parameters>
-		<Length Name="A">
-			<Description><![CDATA["LODSystem1"]]></Description>
-			<Fix/>
-			<Value>{bound_x}</Value>
-		</Length>
+		<Integer Name="macro_choose">
+			<Description><![CDATA[""]]></Description>
+			<Value>4</Value>
+		</Integer>
 		<String Name="macro">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="3" SecondDimension="0">
-				<AVal Row="1"><![CDATA["{object_name} LOD1"]]></AVal>
-				<AVal Row="2"><![CDATA["{object_name} LOD1"]]></AVal>
-				<AVal Row="3"><![CDATA["{object_name} LOD0"]]></AVal>
+				<AVal Row="1"><![CDATA["{object_name}_LOD1"]]></AVal>
+				<AVal Row="2"><![CDATA["{object_name}_LOD1"]]></AVal>
+				<AVal Row="3"><![CDATA["{object_name}_LOD0"]]></AVal>
 			</ArrayValues>
 		</String>
 		<Length Name="A">
