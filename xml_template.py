@@ -1,6 +1,6 @@
 import datetime
 
-def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, ac_version:int=43):
+def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, ac_version:int=43):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -17,7 +17,7 @@ def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float,
 		gdl_script += item + "\n"
 
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
-<Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-0000-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
+<Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70D{lod if lod else 0}-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
 <Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
 	<MainGUID>F938E33A-329D-4A36-BE3E-85E126820996</MainGUID>
 	<MainGUID>103E8D2C-8230-42E1-9597-46F84CCE28C0</MainGUID>

@@ -66,7 +66,8 @@ class EDGE():
     instances = []
     rinstances = []
 
-    def __init__(self, v1, v2, smooth, bl_index):
+    def __init__(self, v1, v2, smooth, bl_index, bl_edge):
+        self.bl_edge = bl_edge
         self.bl_index = bl_index
         self.f1 = -1
         self.f2 = -1
@@ -96,8 +97,8 @@ class EDGE():
         cls.rinstances = []
 
     @classmethod
-    def new_edge(cls, v1, v2, smooth, bl_index):
-        self = cls(v1, v2, smooth, bl_index)
+    def new_edge(cls, v1, v2, smooth, bl_index, bl_edge):
+        self = cls(v1, v2, smooth, bl_index, bl_edge)
         # Get the mirroring edge if exists
         if len(self.__class__.rinstances):
             is_present, edge = self.is_present(self.__class__.rinstances, self)
@@ -159,12 +160,13 @@ class EDGE():
     @staticmethod
     def is_present(rinstances, self):
         for edge in rinstances:
-            if self.v1.index in [edge.v1.index,edge.v2.index]:
-                if self.v2.index in [edge.v1.index,edge.v2.index]:
-                    if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
-                        return True, edge
-                    elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
-                        return False, edge
+            if edge.bl_edge == self.bl_edge:
+                if self.v1.index in [edge.v1.index,edge.v2.index]:
+                    if self.v2.index in [edge.v1.index,edge.v2.index]:
+                        if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
+                            return True, edge
+                        elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
+                            return False, edge
         else:
             return False, None
 
@@ -258,11 +260,11 @@ def run_script(smooth_angle, save_directory):
         for n_loop, loop in enumerate(face.loops):
             # Create a TEVE with first vertice XYZUV infos
             face_vertices[n_loop] = TEVE.new_teve(
-                "%.3f" % loop.vert.co[0],
-                "%.3f" % loop.vert.co[1],
-                "%.3f" % loop.vert.co[2],
-                "%.3f" % loop[uv_layer].uv[0],
-                "%.3f" % loop[uv_layer].uv[1],
+                "%.4f" % loop.vert.co[0],
+                "%.4f" % loop.vert.co[1],
+                "%.4f" % loop.vert.co[2],
+                "%.4f" % loop[uv_layer].uv[0],
+                "%.4f" % loop[uv_layer].uv[1],
                 loop.vert.index
             )
 
@@ -282,15 +284,15 @@ def run_script(smooth_angle, save_directory):
             # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
             if not n_loop == len(face.loops) -1:
                 face_vertices[n_loop+1] = TEVE.new_teve(
-                    "%.3f" % face.loops[n_loop+1].vert.co[0],
-                    "%.3f" % face.loops[n_loop+1].vert.co[1],
-                    "%.3f" % face.loops[n_loop+1].vert.co[2],
-                    "%.3f" % face.loops[n_loop+1][uv_layer].uv[0],
-                    "%.3f" % face.loops[n_loop+1][uv_layer].uv[1],
+                    "%.4f" % face.loops[n_loop+1].vert.co[0],
+                    "%.4f" % face.loops[n_loop+1].vert.co[1],
+                    "%.4f" % face.loops[n_loop+1].vert.co[2],
+                    "%.4f" % face.loops[n_loop+1][uv_layer].uv[0],
+                    "%.4f" % face.loops[n_loop+1][uv_layer].uv[1],
                     loop.vert.index
                 )
                 
-                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index)
+                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index, loop.edge)
                 
                 face_edges[loop.edge.index] = edge
                 
@@ -300,15 +302,15 @@ def run_script(smooth_angle, save_directory):
 
             else:
                 face_vertices[0] = TEVE.new_teve(
-                    "%.3f" % face.loops[0].vert.co[0],
-                    "%.3f" % face.loops[0].vert.co[1],
-                    "%.3f" % face.loops[0].vert.co[2],
-                    "%.3f" % face.loops[0][uv_layer].uv[0],
-                    "%.3f" % face.loops[0][uv_layer].uv[1],
+                    "%.4f" % face.loops[0].vert.co[0],
+                    "%.4f" % face.loops[0].vert.co[1],
+                    "%.4f" % face.loops[0].vert.co[2],
+                    "%.4f" % face.loops[0][uv_layer].uv[0],
+                    "%.4f" % face.loops[0][uv_layer].uv[1],
                     loop.vert.index
                 )  
                 
-                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index) 
+                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index, loop.edge) 
                 face_edges[loop.edge.index] = edge
                 if existing_edge:
                     edge = existing_edge
