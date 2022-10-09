@@ -20,12 +20,19 @@ class archicad_exporter(bpy.types.AddonPreferences):
     LP_XMLConverter: bpy.props.StringProperty(
         name= "LP_XMLConverter", 
         description="LP_XMLConverter.exe is located in archicad installation folder.", 
-        default="C:\\Program Files\\GRAPHISOFT\\ARCHICAD 25\\LP_XMLConverter.exe", 
+        default="C:\\Program Files\\GRAPHISOFT\\ARCHICAD 24\\LP_XMLConverter.exe", 
         subtype="FILE_PATH")
+    ac_version: bpy.props.EnumProperty(name="Archicad version", items=[
+        ("40", "Archicad 23", "Archicad 23"), 
+        ("41", "Archicad 24", "Archicad 24"), 
+        ("43", "Archicad 25", "Archicad 25"),
+        ("44", "Archicad 26", "Archicad 26"),
+        ])
 
     def draw(self, context):
-        layout = self.layout.row()
+        layout = self.layout.column()
         layout.prop(self, "LP_XMLConverter")
+        layout.prop(self, "ac_version")
 
 def register():
     bpy.utils.register_class(archicad_exporter)

@@ -1,13 +1,16 @@
 import bpy
 
 
-frame_number = str(bpy.data.scenes["Scene"].frame_current)
-frame_number = "0" * (4 - (len(frame_number))) + frame_number
-dissolve_angle = 10 * (3.1459/180)
-merge_distance = 0.002
 
-initial_objects = list(bpy.context.view_layer.objects)
+
 def run_script(filepath):
+    frame_number = str(bpy.data.scenes["Scene"].frame_current)
+    frame_number = "0" * (4 - (len(frame_number))) + frame_number
+    dissolve_angle = 10 * (3.1459/180)
+    merge_distance = 0.002
+    initial_objects = list(bpy.context.view_layer.objects)
+
+
     try:
         bpy.ops.preferences.addon_enable(module="render_freestyle_svg")
         bpy.ops.preferences.addon_enable(module="io_export_dxf")

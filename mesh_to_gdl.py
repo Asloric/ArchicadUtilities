@@ -80,7 +80,11 @@ class EDGE():
         elif self.f2 == -1:
             self.f2 = face_id
         else:
-            print("ERROR: MORE THAN 2 FACES FOR THIS EDGE")
+            print("ERROR: MORE THAN 2 FACES FOR THIS EDGE", self.bl_index)
+            print(self.f1)
+            print(self.f2)
+            print(face_id)
+
 
     def __str__(self):
         return(str(self.index))
@@ -110,9 +114,10 @@ class EDGE():
         
         # if mirroring edge is found, 
         elif not is_present and edge is not None:
-            self.__class__.instances.append(self)
+            #self.__class__.instances.append(self)
             self.__class__.rinstances.insert(0, self)
             setattr(self, "index", (self.__class__.instances.index(edge)+1) * -1)
+
             return self, edge
 
         else: return edge, None
@@ -131,7 +136,7 @@ class EDGE():
             else:
                 smooth = 0
             
-            print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.bl_index}")
+            print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.index}")
 
     @classmethod
     def get_output(cls, edge = None):
@@ -148,7 +153,7 @@ class EDGE():
             else:
                 smooth = 262146
                 
-            list.append(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.bl_index}")
+            list.append(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.index}")
         return list
 
     @staticmethod
@@ -171,6 +176,9 @@ class EDGE():
 
 PGON = []
 VECT_LIST = []
+MATERIAL = []
+MATERIAL_ASSIGN = []
+TEXTURE = []
 
 face_id_bl2ac = {}
 
@@ -183,17 +191,63 @@ def compare_verts_x_y_z(vert, previous_vert):
         return False
 
 
-def run_script(smooth_angle):
-
+def run_script(smooth_angle, save_directory):
+    use_vect = False
     
     global PGON
     global VECT_LIST
+    global MATERIAL
+    global MATERIAL_ASSIGN
+    global TEXTURE
+
     ob = bpy.context.active_object
     me = ob.data
     bm = bmesh.from_edit_mesh(me)
     uv_layer= bm.loops.layers.uv.verify()
     VECT_ID = 0
     
+
+    # for material index in object
+    # create an ac_material from bl_material data
+    
+    for mat_slot in ob.material_slots:
+        if mat_slot.material:
+            # create a list of PGON for each material
+            PGON.append([])
+            # Retrieve the diffuse texture
+            for principled_node in mat_slot.material.node_tree.nodes:
+                if principled_node.type == "BSDF_PRINCIPLED":
+                    for node_links in principled_node.inputs[0].links:
+                        texture_node = node_links.from_node
+                        if texture_node.image:
+                            texture_name = texture_node.image.name
+                            break
+
+            # Save image to folder
+            texture_datablock = bpy.data.images[texture_name]
+            texture_datablock.save_render(save_directory + texture_name + ".png")
+
+            
+            if texture_name:
+                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
+                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )')
+            elif principled_node:
+                color = principled_node.inputs[0].default_value
+                spec = principled_node.inputs[7].default_value
+                alpha = principled_node.inputs[21].default_value
+                emission = principled_node.inputs[19].default_value
+                emission_str = principled_node.inputs[20].default_value
+                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {alpha}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}')
+            else:
+                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0')
+            
+            MATERIAL_ASSIGN.append(f'SET MATERIAL "material_{mat_slot.material.name}"')
+
+    if not len(MATERIAL):
+        MATERIAL.append(f'DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0')
+        MATERIAL_ASSIGN.append(f'SET MATERIAL "material_default"')
+        PGON.append([])
+
 
     # For each face in the mesh
     for face in bm.faces:
@@ -242,7 +296,7 @@ def run_script(smooth_angle):
                 
                 if existing_edge:
                     edge = existing_edge
-                edge.add_face(len(PGON)+1)
+                edge.add_face(len(PGON[face.material_index])+1)
 
             else:
                 face_vertices[0] = TEVE.new_teve(
@@ -258,29 +312,39 @@ def run_script(smooth_angle):
                 face_edges[loop.edge.index] = edge
                 if existing_edge:
                     edge = existing_edge
-                edge.add_face(len(PGON)+1)
+                edge.add_face(len(PGON[face.material_index])+1)
 
         
-        VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
-        VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
+        if use_vect:
+            VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
+            VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
+            VECT_LIST.append(VECT)
         
-        
-        pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID}, 2, "
+        pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
         #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
         for edge in face_edges.values():
             pgon_str += str(edge) + ", "
-        VECT_LIST.append(VECT)
-        PGON.append(pgon_str[:-2])
-        #print(pgon_str[:-2])
 
-    teve_list = TEVE.get_output()
-    edge_list = EDGE.get_output()
+        # depending on the face material, tell this pgon to go in specific list
+        PGON[face.material_index].append(pgon_str[:-2])
+
+    TEVE_LIST = TEVE.get_output()
+    EDGE_LIST = EDGE.get_output()
 
 
-    new_file = teve_list + edge_list + VECT_LIST + PGON
+    new_file = TEXTURE + MATERIAL + TEVE_LIST + EDGE_LIST
+    if use_vect:
+        new_file += VECT_LIST
+    for mat_index, mat in enumerate(MATERIAL_ASSIGN):
+        new_file.append(mat)
+        new_file += PGON[mat_index]
 
 
     TEVE.clear()
     EDGE.clear()
     PGON = []
+    VECT_LIST = []
+    MATERIAL = []
+    MATERIAL_ASSIGN = []
+    TEXTURE = []
     return new_file
