@@ -218,6 +218,7 @@ VECT_LIST = []
 MATERIAL = []
 MATERIAL_ASSIGN = []
 TEXTURE = []
+Textures_ids = {}
 
 face_id_bl2ac = {}
 
@@ -236,8 +237,9 @@ def set_materials(ob, save_directory):
     global MATERIAL
     global MATERIAL_ASSIGN
     global TEXTURE
+    global Textures_ids
 
-    for mat_slot in ob.material_slots:
+    for mat_index, mat_slot in enumerate(ob.material_slots):
         if mat_slot.material:
             # create a list of PGON for each material
             PGON.append([])
@@ -259,11 +261,13 @@ def set_materials(ob, save_directory):
             # Save image to folder
             if texture_name:
                 texture_datablock = bpy.data.images[texture_name]
-                texture_datablock.save_render(save_directory + texture_name + ".png")
+                texture_datablock.save_render(save_directory + "\\" + texture_name + ".png")
 
             
             if texture_name:
-                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
+                # TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
+                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" {mat_index + 1} , 1, 1, 1, 0')
+                Textures_ids[mat_index + 1] = f"{texture_name}.png"
                 MATERIAL.append(f'''
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
@@ -442,4 +446,4 @@ def run_script(smooth_angle, save_directory):
     MATERIAL = []
     MATERIAL_ASSIGN = []
     TEXTURE = []
-    return new_file
+    return new_file, Textures_ids

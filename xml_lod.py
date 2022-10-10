@@ -1,7 +1,7 @@
 import datetime
 import bpy
 
-def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bound_z:float, surfaces = [], materials = [], ac_version:int=43):
+def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bound_z:float, surfaces = [], materials = [], ac_version:int=43, thumbnail_path=None):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -53,6 +53,10 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 		</BuildingMaterial>
 '''
 
+	if thumbnail_path:
+		thumbnail = f'<Picture MIME="image/png" SectVersion="19" SectionFlags="0" SubIdent="0" path="{object_name}_preview.png"/>'
+	else:
+		thumbnail = ''
 
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70DA-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
@@ -357,6 +361,7 @@ hideparameter "macro", "macro_choose"
 <![CDATA[]]>
 </Comment>
 
+{thumbnail}
 
 <Drawing Ordering="DrawQueue" SectVersion="36" SectionFlags="0" SubIdent="0">
 </Drawing>

@@ -1,7 +1,7 @@
 import datetime
 import bpy
 
-def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, surfaces = [], materials = [], ac_version:int=43):
+def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, Textures_ids, surfaces = [], materials = [],  ac_version:int=43, thumbnail_path=None):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -54,7 +54,17 @@ def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float,
 			<Value>{preferences.default_material}</Value>
 		</BuildingMaterial>
 '''
+	if thumbnail_path:
+		thumbnail = f'<Picture MIME="image/png" SectVersion="19" SectionFlags="0" SubIdent="0" path="{object_name}_preview.png"/>'
+	else:
+		thumbnail = ''
+	
+	textures = ""
 
+	for index, name in Textures_ids.items():
+		textures += f'''
+<GDLPict MIME="image/png" SectVersion="19" SectionFlags="0" SubIdent="{index}" path="{name}"/>
+		'''
 
 
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -241,6 +251,10 @@ ROTZ 180
 <Comment SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[]]>
 </Comment>
+
+{thumbnail}
+{textures}
+
 
 </Symbol>
 '''

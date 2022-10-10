@@ -28,14 +28,20 @@ class archicad_exporter(bpy.types.AddonPreferences):
         ("43", "Archicad 25", "Archicad 25"),
         ("44", "Archicad 26", "Archicad 26"),
         ])
-    default_pen: bpy.props.IntProperty(name="default surface", default=5)
-    default_line: bpy.props.IntProperty(name="default surface", default=1)
+    default_pen: bpy.props.IntProperty(name="default pen", default=5)
+    default_line: bpy.props.IntProperty(name="default line", default=1)
     default_surface: bpy.props.IntProperty(name="default surface", default=0)
     default_material: bpy.props.IntProperty(name="default material", default=0)
+    preview_resolution: bpy.props.IntProperty(name="preview resolution", default=64)
     def draw(self, context):
         layout = self.layout.column()
         layout.prop(self, "LP_XMLConverter")
         layout.prop(self, "ac_version")
+        layout.prop(self, "default_pen")
+        layout.prop(self, "default_line")
+        layout.prop(self, "default_surface")
+        layout.prop(self, "default_material")
+        layout.prop(self, "preview_resolution")
 
 def register():
     bpy.utils.register_class(archicad_exporter)
