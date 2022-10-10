@@ -36,6 +36,8 @@ def cleanString(incomingString):
     if len(newstring) > 28:
         return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}
     else:
+        if newstring == "Material":
+            return "bl_Material"
         return newstring
 
 

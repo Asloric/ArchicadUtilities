@@ -17,6 +17,44 @@ class export_properties(bpy.types.PropertyGroup):
     def unregister():
         del bpy.types.Scene.acaccf
 
+class ACACCF_OT_apply(bpy.types.Operator):
+    bl_idname = "acaccf.apply"
+    bl_label = "Apply object"
+    bl_description = "Apply modifiers and join objects. Mendatory step for proper export."
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.active_object.type == "MESH"
+
+    def execute(self, context):
+        
+        def apply_modifiers(obj):
+            ctx = bpy.context.copy()
+            ctx['object'] = obj
+            for _, m in enumerate(obj.modifiers):
+                try:
+                    ctx['modifier'] = m
+                    bpy.ops.object.modifier_apply(ctx, modifier=m.name)
+                except RuntimeError:
+                    print(f"Error applying {m.name} to {obj.name}, removing it instead.")
+                    obj.modifiers.remove(m)
+
+            for m in obj.modifiers:
+                obj.modifiers.remove(m)
+        
+
+        # apply modifiers on every object in the selection
+        bpy.ops.object.duplicate(linked=False)
+        object_list = context.selected_objects
+        active_object = context.active_object
+        for obj in object_list:            
+            apply_modifiers(obj)
+
+        bpy.ops.object.join()
+
+
+        return {"FINISHED"}
+
 
 class ACACCF_OT_export(bpy.types.Operator):
     bl_idname = "acaccf.export"
@@ -175,7 +213,8 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 classes = [
     ACACCF_OT_export,
-    export_properties
+    export_properties,
+    ACACCF_OT_apply
 ]
 
 

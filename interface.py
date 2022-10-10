@@ -13,6 +13,7 @@ class ACACCF_PT_Main(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout.column(align=False)
+        layout.operator("acaccf.apply")
         layout.operator("acaccf.export", text="Export object")
         
 
