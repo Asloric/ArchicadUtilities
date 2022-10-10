@@ -79,8 +79,21 @@ class ACACCF_OT_export(bpy.types.Operator):
             #get back to object mode
             bpy.ops.object.mode_set(mode='OBJECT')
             
+            # Get the list of materials for AC override
+            object_materials = []
+            object_surfaces = []
+            for material in lod.data.materials:
+                if material:
+                    object_materials.append(mesh_to_gdl.cleanString(material.name))
+                    object_surfaces.append(f'sf_{mesh_to_gdl.cleanString(material.name)}')
+            if not len(object_materials) > 0:
+                object_materials = ["material_default"]
+                object_surfaces = ["sf_material_default"]
+
+
+
             # complete xml
-            xml = xml_template.get_xml(is_placable, "PROJECT2{2} 3, 90, 288", mesh_script, size_x, size_y, size_z, lod_number, ac_version)
+            xml = xml_template.get_xml(is_placable, "PROJECT2{2} 3, 90, 288", mesh_script, size_x, size_y, size_z, lod_number, object_surfaces, object_materials, ac_version)
 
 
             target_filepath = props.save_path + object_name + ".xml"
@@ -90,12 +103,11 @@ class ACACCF_OT_export(bpy.types.Operator):
             print("file saved to " + target_filepath)
 
             bpy.ops.object.delete(use_global=True, confirm=False)
-            return (size_x, size_y, size_z)
+            return (size_x, size_y, size_z), object_materials, object_surfaces
 
-        def process_lod_xml(props, object_dimensions, ac_version):
-           
+        def process_lod_xml(props, object_dimensions, ac_version, object_materials, object_surfaces):
             # complete xml
-            xml = xml_lod.get_xml(props.object_name, props.is_placable, object_dimensions[0], object_dimensions[1], object_dimensions[2], ac_version)
+            xml = xml_lod.get_xml(props.object_name, props.is_placable, object_dimensions[0], object_dimensions[1], object_dimensions[2], object_surfaces, object_materials,  ac_version)
 
 
             target_filepath = props.save_path + props.object_name + ".xml"
@@ -119,15 +131,17 @@ class ACACCF_OT_export(bpy.types.Operator):
         if props.export_lod and props.lod_0 and props.lod_1:
             i = 0
             for lod in [props.lod_0, props.lod_1]:
-                object_dimensions = process_object(props, lod, False, i)
+                object_dimensions, object_materials = process_object(props, lod, False, i)
+
+
                 subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', shell=True)
                 i += 1
-            process_lod_xml(props, object_dimensions, ac_version)
+            process_lod_xml(props, object_dimensions, ac_version, object_materials)
             subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         else:
             # Ensure at lease one object is being submitted to the process function
-            lod = props.lod_1 if props.lod_1 else props.lod_0
+            lod = props.lod_0 if props.lod_0 else props.lod_1
             lod = context.active_object if not lod else lod
             process_object(props, lod, props.is_placable, None)
             subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)

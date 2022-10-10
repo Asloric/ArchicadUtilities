@@ -2,6 +2,41 @@ import bpy
 import bmesh
 from math import *
 
+def cleanString(incomingString):
+    newstring = incomingString
+    newstring = newstring.replace("!","")
+    newstring = newstring.replace("@","")
+    newstring = newstring.replace("#","")
+    newstring = newstring.replace("$","")
+    newstring = newstring.replace("%","")
+    newstring = newstring.replace("^","")
+    newstring = newstring.replace("&","and")
+    newstring = newstring.replace("*","")
+    newstring = newstring.replace("(","")
+    newstring = newstring.replace(")","")
+    newstring = newstring.replace("+","")
+    newstring = newstring.replace("=","")
+    newstring = newstring.replace("?","")
+    newstring = newstring.replace("\'","")
+    newstring = newstring.replace("\"","")
+    newstring = newstring.replace("{","")
+    newstring = newstring.replace("}","")
+    newstring = newstring.replace("[","")
+    newstring = newstring.replace("]","")
+    newstring = newstring.replace("<","")
+    newstring = newstring.replace(">","")
+    newstring = newstring.replace("~","")
+    newstring = newstring.replace("`","")
+    newstring = newstring.replace(":","")
+    newstring = newstring.replace(";","")
+    newstring = newstring.replace("|","")
+    newstring = newstring.replace("\\","")
+    newstring = newstring.replace("/","")        
+    newstring = newstring.replace(".","")        
+    if len(newstring) > 28:
+        return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}
+    else:
+        return newstring
 
 
 class TEVE():
@@ -193,6 +228,94 @@ def compare_verts_x_y_z(vert, previous_vert):
         return False
 
 
+def set_materials(ob, save_directory):
+    global PGON
+    global VECT_LIST
+    global MATERIAL
+    global MATERIAL_ASSIGN
+    global TEXTURE
+
+    for mat_slot in ob.material_slots:
+        if mat_slot.material:
+            # create a list of PGON for each material
+            PGON.append([])
+            texture_name = None
+            principled_node = None
+            mat_name = cleanString(mat_slot.material.name)
+
+            # Retrieve the diffuse texture
+            for node in mat_slot.material.node_tree.nodes:
+                if node.type == "BSDF_PRINCIPLED":
+                    principled_node = node
+                    for node_links in principled_node.inputs[0].links:
+                        texture_node = node_links.from_node
+                        if texture_node.image:
+                            texture_name = texture_node.image.name
+                            break
+
+            
+            # Save image to folder
+            if texture_name:
+                texture_datablock = bpy.data.images[texture_name]
+                texture_datablock.save_render(save_directory + texture_name + ".png")
+
+            
+            if texture_name:
+                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
+                MATERIAL.append(f'''
+!bms_{mat_name} = 0
+r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
+DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
+
+                    ''')
+            elif principled_node:
+                color = principled_node.inputs[0].default_value
+                spec = principled_node.inputs[7].default_value
+                alpha = principled_node.inputs[21].default_value
+                emission = principled_node.inputs[19].default_value
+                emission_str = principled_node.inputs[20].default_value
+                MATERIAL.append(f'''
+!bms_{mat_name} = 0
+r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
+DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
+
+                    ''')
+
+            else:
+                MATERIAL.append(f'''
+DEFINE MATERIAL "material_{mat_name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+!bms_{mat_name} = 0
+r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
+
+                    ''')
+            
+            MATERIAL_ASSIGN.append(f'''
+SET building_material {mat_name}, DEFAULT, DEFAULT
+IF not(ovr_sf_{mat_name}) then
+    SET MATERIAL "material_{mat_name}"
+ELSE
+    SET MATERIAL {mat_name}
+ENDIF
+                ''')
+
+    if not len(MATERIAL):
+        MATERIAL.append(f'''
+DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+!bms_material_default = 0
+r = REQUEST{'{2}'} ("Building_Material_info", material_default, "gs_bmat_surface", sf_material_default)
+        ''')
+        
+        MATERIAL_ASSIGN.append(f'''
+SET building_material material_default, DEFAULT, DEFAULT
+IF not(ovr_sf_material_default) then
+    SET MATERIAL "material_default"
+ELSE
+    SET MATERIAL sf_material_default
+ENDIF
+        ''')
+        PGON.append([])
+
+
 def run_script(smooth_angle, save_directory):
     use_vect = False
     
@@ -211,44 +334,7 @@ def run_script(smooth_angle, save_directory):
 
     # for material index in object
     # create an ac_material from bl_material data
-    
-    for mat_slot in ob.material_slots:
-        if mat_slot.material:
-            # create a list of PGON for each material
-            PGON.append([])
-            # Retrieve the diffuse texture
-            for principled_node in mat_slot.material.node_tree.nodes:
-                if principled_node.type == "BSDF_PRINCIPLED":
-                    for node_links in principled_node.inputs[0].links:
-                        texture_node = node_links.from_node
-                        if texture_node.image:
-                            texture_name = texture_node.image.name
-                            break
-
-            # Save image to folder
-            texture_datablock = bpy.data.images[texture_name]
-            texture_datablock.save_render(save_directory + texture_name + ".png")
-
-            
-            if texture_name:
-                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
-                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )')
-            elif principled_node:
-                color = principled_node.inputs[0].default_value
-                spec = principled_node.inputs[7].default_value
-                alpha = principled_node.inputs[21].default_value
-                emission = principled_node.inputs[19].default_value
-                emission_str = principled_node.inputs[20].default_value
-                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {alpha}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}')
-            else:
-                MATERIAL.append(f'DEFINE MATERIAL "material_{mat_slot.material.name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0')
-            
-            MATERIAL_ASSIGN.append(f'SET MATERIAL "material_{mat_slot.material.name}"')
-
-    if not len(MATERIAL):
-        MATERIAL.append(f'DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0')
-        MATERIAL_ASSIGN.append(f'SET MATERIAL "material_default"')
-        PGON.append([])
+    set_materials(ob, save_directory)
 
 
     # For each face in the mesh
@@ -337,9 +423,9 @@ def run_script(smooth_angle, save_directory):
     new_file = TEXTURE + MATERIAL + TEVE_LIST + EDGE_LIST
     if use_vect:
         new_file += VECT_LIST
-    for mat_index, mat in enumerate(MATERIAL_ASSIGN):
-        new_file.append(mat)
-        new_file += PGON[mat_index]
+    for PGON_Index, PGON_Group in enumerate(PGON):
+        new_file.append(MATERIAL_ASSIGN[PGON_Index])
+        new_file += PGON_Group
 
 
     TEVE.clear()

@@ -1,6 +1,7 @@
 import datetime
+import bpy
 
-def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bound_z:float, ac_version:int=43):
+def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bound_z:float, surfaces = [], materials = [], ac_version:int=43):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -12,6 +13,37 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 	ac_version: Archicad version. Lookup online for correct number. Default AC25
 	'''
 	date = datetime.datetime.now()
+
+
+	preferences = bpy.context.preferences.addons[__package__].preferences
+
+	parameter_surface = ""
+
+	for surface_title in surfaces:
+		parameter_surface += f'''
+
+		<Material Name="{surface_title}">
+			<Description><![CDATA["{surface_title}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_surface}</Value>
+		</Material>
+'''
+
+	parameter_material = ""
+
+	for material_title in materials:
+		parameter_surface += f'''
+		<BuildingMaterial Name="{material_title}">
+			<Description><![CDATA["{material_title}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_material}</Value>
+		</BuildingMaterial>
+'''
+
 
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70DA-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
@@ -168,7 +200,7 @@ values{"{2}"} 'macro_choose' 	1,stMacro_choose[1],
 
 
 
-hideparameter all "A", "B"
+hideparameter "macro", "macro_choose"
 ]]>
 </Script_VL>
 
@@ -250,6 +282,53 @@ hideparameter all "A", "B"
 			</Flags>
 			<Value>0</Value>
 		</Length>
+	
+
+
+		<!-- PEN_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="PEN_TITLE">
+			<Description><![CDATA["STYLOS"]]></Description>
+		</Title>
+		<PenColor Name="penAttribute_1">
+			<Description><![CDATA["Stylo 1"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_pen}</Value>
+		</PenColor>
+
+
+		<!-- LINETYPE_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="LINETYPE_TITLE">
+			<Description><![CDATA["LIGNES"]]></Description>
+		</Title>
+		<LineType Name="lineTypeAttribute_1">
+			<Description><![CDATA["Ligne 1"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_line}</Value>
+		</LineType>
+
+
+		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="BUILDING_MATERIAL_TITLE">
+			<Description><![CDATA["MATERIAUX DE CONSTRUCTION"]]></Description>
+		</Title>
+		{parameter_material}
+
+
+		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="MATERIAL_TITLE">
+			<Description><![CDATA["SURFACES"]]></Description>
+		</Title>
+		{parameter_surface}
+
+
 	</Parameters>
 </ParamSection>
 

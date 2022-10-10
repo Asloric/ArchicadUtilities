@@ -28,7 +28,10 @@ class archicad_exporter(bpy.types.AddonPreferences):
         ("43", "Archicad 25", "Archicad 25"),
         ("44", "Archicad 26", "Archicad 26"),
         ])
-
+    default_pen: bpy.props.IntProperty(name="default surface", default=5)
+    default_line: bpy.props.IntProperty(name="default surface", default=1)
+    default_surface: bpy.props.IntProperty(name="default surface", default=0)
+    default_material: bpy.props.IntProperty(name="default material", default=0)
     def draw(self, context):
         layout = self.layout.column()
         layout.prop(self, "LP_XMLConverter")

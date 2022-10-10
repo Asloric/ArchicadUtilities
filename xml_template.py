@@ -1,6 +1,7 @@
 import datetime
+import bpy
 
-def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, ac_version:int=43):
+def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, surfaces = [], materials = [], ac_version:int=43):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -16,6 +17,46 @@ def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float,
 	for item in mesh_script:
 		gdl_script += item + "\n"
 
+	preferences = bpy.context.preferences.addons[__package__].preferences
+
+	parameter_surface = ""
+
+	for surface_title in surfaces:
+		parameter_surface += f'''
+
+		<Boolean Name="{"ovr_" + surface_title}">
+			<Description><![CDATA["Remplacer surface"]]></Description>
+			<Fix/>
+			<Flags>
+			</Flags>
+			<Value>0</Value>
+		</Boolean>
+
+		<Material Name="{surface_title}">
+			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_surface}</Value>
+		</Material>
+
+'''
+
+	parameter_material = ""
+
+	for material_title in materials:
+		parameter_surface += f'''
+		<BuildingMaterial Name="{material_title}">
+			<Description><![CDATA["{material_title}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_material}</Value>
+		</BuildingMaterial>
+'''
+
+
+
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70D{lod if lod else 0}-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
 <Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
@@ -26,7 +67,11 @@ def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float,
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[{symbol_script}]]>
+<![CDATA[
+pen     penAttribute_1
+set line_type lineTypeAttribute_1
+{symbol_script}
+]]>
 </Script_2D>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -90,6 +135,49 @@ def get_xml(is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float,
 			</Flags>
 			<Value>0</Value>
 		</Length>
+
+
+		<!-- PEN_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="PEN_TITLE">
+			<Description><![CDATA["STYLOS"]]></Description>
+		</Title>
+		<PenColor Name="penAttribute_1">
+			<Description><![CDATA["Stylo 1"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_pen}</Value>
+		</PenColor>
+
+
+		<!-- LINETYPE_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="LINETYPE_TITLE">
+			<Description><![CDATA["LIGNES"]]></Description>
+		</Title>
+		<LineType Name="lineTypeAttribute_1">
+			<Description><![CDATA["Ligne 1"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_line}</Value>
+		</LineType>
+
+
+		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+
+		{parameter_material}
+
+
+		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
+
+		<Title Name="MATERIAL_TITLE">
+			<Description><![CDATA["SURFACES"]]></Description>
+		</Title>
+		{parameter_surface}
+
 	</Parameters>
 </ParamSection>
 
