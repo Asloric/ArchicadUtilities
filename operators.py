@@ -105,7 +105,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             bpy.ops.object.delete(use_global=True, confirm=False)
             return (size_x, size_y, size_z), object_materials, object_surfaces
 
-        def process_lod_xml(props, object_dimensions, ac_version, object_materials, object_surfaces):
+        def process_lod_xml(props, object_dimensions, object_surfaces, object_materials, ac_version):
             # complete xml
             xml = xml_lod.get_xml(props.object_name, props.is_placable, object_dimensions[0], object_dimensions[1], object_dimensions[2], object_surfaces, object_materials,  ac_version)
 
@@ -131,12 +131,12 @@ class ACACCF_OT_export(bpy.types.Operator):
         if props.export_lod and props.lod_0 and props.lod_1:
             i = 0
             for lod in [props.lod_0, props.lod_1]:
-                object_dimensions, object_materials = process_object(props, lod, False, i)
+                object_dimensions, object_materials, object_surfaces = process_object(props, lod, False, i)
 
 
                 subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', shell=True)
                 i += 1
-            process_lod_xml(props, object_dimensions, ac_version, object_materials)
+            process_lod_xml(props, object_dimensions, object_surfaces, object_materials,  ac_version)
             subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         else:

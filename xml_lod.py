@@ -22,13 +22,22 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 	for surface_title in surfaces:
 		parameter_surface += f'''
 
+		<Boolean Name="{"ovr_" + surface_title}">
+			<Description><![CDATA["Remplacer surface"]]></Description>
+			<Fix/>
+			<Flags>
+			</Flags>
+			<Value>0</Value>
+		</Boolean>
+
 		<Material Name="{surface_title}">
-			<Description><![CDATA["{surface_title}"]]></Description>
+			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
 			<Flags>
 				<ParFlg_Child/>
 			</Flags>
 			<Value>{preferences.default_surface}</Value>
 		</Material>
+
 '''
 
 	parameter_material = ""
@@ -64,7 +73,7 @@ n = libraryglobal('LODSettings','macro_choose',_macro_choose)
 endif 
 
 
-call macro[_macro_choose] parameters
+call macro[_macro_choose] parameters all
 
 
 
@@ -90,7 +99,7 @@ n = libraryglobal('LODSettings','macro_choose',_macro_choose)
 endif 
 
 
-call macro[_macro_choose] parameters
+call macro[_macro_choose] parameters all
 
 
 
@@ -315,15 +324,15 @@ hideparameter "macro", "macro_choose"
 
 		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
 
-		<Title Name="BUILDING_MATERIAL_TITLE">
-			<Description><![CDATA["MATERIAUX DE CONSTRUCTION"]]></Description>
+		<Title Name="MATERIAL_TITLE">
+			<Description><![CDATA["MATERIAUX"]]></Description>
 		</Title>
 		{parameter_material}
 
 
 		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
 
-		<Title Name="MATERIAL_TITLE">
+		<Title Name="SURFACE_TITLE">
 			<Description><![CDATA["SURFACES"]]></Description>
 		</Title>
 		{parameter_surface}

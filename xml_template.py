@@ -77,7 +77,10 @@ set line_type lineTypeAttribute_1
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[{gdl_script}]]>
+<![CDATA[
+ADDZ ZZYZX/2
+{gdl_script}
+]]>
 </Script_3D>
 
 <ParamSection SectVersion="27" SectionFlags="0" SubIdent="0">
@@ -167,13 +170,15 @@ set line_type lineTypeAttribute_1
 
 		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
 
-
+		<Title Name="MATERIAL_TITLE">
+			<Description><![CDATA["MATERIAUX"]]></Description>
+		</Title>
 		{parameter_material}
 
 
 		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
 
-		<Title Name="MATERIAL_TITLE">
+		<Title Name="SURFACE_TITLE">
 			<Description><![CDATA["SURFACES"]]></Description>
 		</Title>
 		{parameter_surface}

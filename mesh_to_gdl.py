@@ -263,8 +263,7 @@ def set_materials(ob, save_directory):
             if texture_name:
                 TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
                 MATERIAL.append(f'''
-!bms_{mat_name} = 0
-r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
+r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
 
                     ''')
@@ -275,7 +274,6 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 emission = principled_node.inputs[19].default_value
                 emission_str = principled_node.inputs[20].default_value
                 MATERIAL.append(f'''
-!bms_{mat_name} = 0
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
 DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
 
@@ -285,16 +283,17 @@ DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 
                 MATERIAL.append(f'''
 DEFINE MATERIAL "material_{mat_name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 !bms_{mat_name} = 0
-r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
+r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 
                     ''')
             
             MATERIAL_ASSIGN.append(f'''
+BASE
 SET building_material {mat_name}, DEFAULT, DEFAULT
 IF not(ovr_sf_{mat_name}) then
     SET MATERIAL "material_{mat_name}"
 ELSE
-    SET MATERIAL {mat_name}
+    SET MATERIAL sf_{mat_name}
 ENDIF
                 ''')
 
@@ -302,10 +301,11 @@ ENDIF
         MATERIAL.append(f'''
 DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 !bms_material_default = 0
-r = REQUEST{'{2}'} ("Building_Material_info", material_default, "gs_bmat_surface", sf_material_default)
+r = REQUEST{'{2}'} ("Building_Material_info", material_default, "gs_bmat_surface", material_default)
         ''')
         
         MATERIAL_ASSIGN.append(f'''
+BASE
 SET building_material material_default, DEFAULT, DEFAULT
 IF not(ovr_sf_material_default) then
     SET MATERIAL "material_default"
@@ -335,98 +335,103 @@ def run_script(smooth_angle, save_directory):
     # for material index in object
     # create an ac_material from bl_material data
     set_materials(ob, save_directory)
+    new_file = TEXTURE + MATERIAL
 
-
-    # For each face in the mesh
-    for face in bm.faces:
-        face_vertices = {}
-        face_edges = {}
-
-        # For each loop in the face (loop = edge)
-        for n_loop, loop in enumerate(face.loops):
-            # Create a TEVE with first vertice XYZUV infos
-            face_vertices[n_loop] = TEVE.new_teve(
-                "%.4f" % loop.vert.co[0],
-                "%.4f" % loop.vert.co[1],
-                "%.4f" % loop.vert.co[2],
-                "%.4f" % loop[uv_layer].uv[0],
-                "%.4f" % loop[uv_layer].uv[1],
-                loop.vert.index
-            )
-
-            # Get the edge angle with other faces
-            edge_angle = loop.edge.calc_face_angle(99)
-            if edge_angle == 99:
-                smooth = None
-            elif edge_angle <= smooth_angle:
-                smooth = True
-            else:
-                smooth = False
+    for m_index, mat in enumerate(MATERIAL):
+        TEVE.clear()
+        EDGE.clear()
+        PGON = []
+        VECT_LIST = []
             
-            smooth = False if not loop.edge.smooth else smooth
-                    
-                    
-            # If not last edge of face
-            # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
-            if not n_loop == len(face.loops) -1:
-                face_vertices[n_loop+1] = TEVE.new_teve(
-                    "%.4f" % face.loops[n_loop+1].vert.co[0],
-                    "%.4f" % face.loops[n_loop+1].vert.co[1],
-                    "%.4f" % face.loops[n_loop+1].vert.co[2],
-                    "%.4f" % face.loops[n_loop+1][uv_layer].uv[0],
-                    "%.4f" % face.loops[n_loop+1][uv_layer].uv[1],
-                    loop.vert.index
-                )
-                
-                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index, loop.edge)
-                
-                face_edges[loop.edge.index] = edge
-                
-                if existing_edge:
-                    edge = existing_edge
-                edge.add_face(len(PGON[face.material_index])+1)
+        # For each face in the mesh
+        for face in bm.faces:
+            if face.material_index == m_index:
+                face_vertices = {}
+                face_edges = {}
 
-            else:
-                face_vertices[0] = TEVE.new_teve(
-                    "%.4f" % face.loops[0].vert.co[0],
-                    "%.4f" % face.loops[0].vert.co[1],
-                    "%.4f" % face.loops[0].vert.co[2],
-                    "%.4f" % face.loops[0][uv_layer].uv[0],
-                    "%.4f" % face.loops[0][uv_layer].uv[1],
-                    loop.vert.index
-                )  
-                
-                edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index, loop.edge) 
-                face_edges[loop.edge.index] = edge
-                if existing_edge:
-                    edge = existing_edge
-                edge.add_face(len(PGON[face.material_index])+1)
+                # For each loop in the face (loop = edge)
+                for n_loop, loop in enumerate(face.loops):
+                    # Create a TEVE with first vertice XYZUV infos
+                    face_vertices[n_loop] = TEVE.new_teve(
+                        "%.4f" % loop.vert.co[0],
+                        "%.4f" % loop.vert.co[1],
+                        "%.4f" % loop.vert.co[2],
+                        "%.4f" % loop[uv_layer].uv[0],
+                        "%.4f" % loop[uv_layer].uv[1],
+                        loop.vert.index
+                    )
 
-        
+                    # Get the edge angle with other faces
+                    edge_angle = loop.edge.calc_face_angle(99)
+                    if edge_angle == 99:
+                        smooth = None
+                    elif edge_angle <= smooth_angle:
+                        smooth = True
+                    else:
+                        smooth = False
+                    
+                    smooth = False if not loop.edge.smooth else smooth
+                            
+                            
+                    # If not last edge of face
+                    # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
+                    if not n_loop == len(face.loops) -1:
+                        face_vertices[n_loop+1] = TEVE.new_teve(
+                            "%.4f" % face.loops[n_loop+1].vert.co[0],
+                            "%.4f" % face.loops[n_loop+1].vert.co[1],
+                            "%.4f" % face.loops[n_loop+1].vert.co[2],
+                            "%.4f" % face.loops[n_loop+1][uv_layer].uv[0],
+                            "%.4f" % face.loops[n_loop+1][uv_layer].uv[1],
+                            loop.vert.index
+                        )
+                        
+                        edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index, loop.edge)
+                        
+                        face_edges[loop.edge.index] = edge
+                        
+                        if existing_edge:
+                            edge = existing_edge
+                        edge.add_face(len(PGON)+1)
+
+                    else:
+                        face_vertices[0] = TEVE.new_teve(
+                            "%.4f" % face.loops[0].vert.co[0],
+                            "%.4f" % face.loops[0].vert.co[1],
+                            "%.4f" % face.loops[0].vert.co[2],
+                            "%.4f" % face.loops[0][uv_layer].uv[0],
+                            "%.4f" % face.loops[0][uv_layer].uv[1],
+                            loop.vert.index
+                        )  
+                        
+                        edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index, loop.edge) 
+                        face_edges[loop.edge.index] = edge
+                        if existing_edge:
+                            edge = existing_edge
+                        edge.add_face(len(PGON)+1)
+
+                
+                if use_vect:
+                    VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
+                    VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
+                    VECT_LIST.append(VECT)
+                
+                pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
+                #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
+                for edge in face_edges.values():
+                    pgon_str += str(edge) + ", "
+
+                # depending on the face material, tell this pgon to go in specific list
+                PGON.append(pgon_str[:-2])
+
+        TEVE_LIST = TEVE.get_output()
+        EDGE_LIST = EDGE.get_output()
+
+        new_file.append(MATERIAL_ASSIGN[m_index])
+        new_file += TEVE_LIST + EDGE_LIST
         if use_vect:
-            VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
-            VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
-            VECT_LIST.append(VECT)
-        
-        pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
-        #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
-        for edge in face_edges.values():
-            pgon_str += str(edge) + ", "
-
-        # depending on the face material, tell this pgon to go in specific list
-        PGON[face.material_index].append(pgon_str[:-2])
-
-    TEVE_LIST = TEVE.get_output()
-    EDGE_LIST = EDGE.get_output()
-
-
-    new_file = TEXTURE + MATERIAL + TEVE_LIST + EDGE_LIST
-    if use_vect:
-        new_file += VECT_LIST
-    for PGON_Index, PGON_Group in enumerate(PGON):
-        new_file.append(MATERIAL_ASSIGN[PGON_Index])
-        new_file += PGON_Group
-
+            new_file += VECT_LIST
+        new_file += PGON
+        new_file.append("BODY 1")
 
     TEVE.clear()
     EDGE.clear()
