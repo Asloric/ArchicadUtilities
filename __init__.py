@@ -40,12 +40,14 @@ class archicad_exporter(bpy.types.AddonPreferences):
         layout = self.layout.column()
         layout.prop(self, "LP_XMLConverter")
         layout.prop(self, "ac_version")
-        layout.prop(self, "default_pen")
-        layout.prop(self, "default_line")
-        layout.prop(self, "default_surface")
-        layout.prop(self, "default_material")
-        layout.prop(self, "preview_resolution")
-        layout.prop(self, "create_thumbnail")
+        layout.prop(self, "default_pen", text="Stylo de contour")
+        layout.prop(self, "default_line", text="Type de ligne")
+        layout.prop(self, "default_hatch", text="Type de hachure")
+        
+        layout.prop(self, "default_surface", text="Surface de 3D")
+        layout.prop(self, "default_material", text="Materiau de construction")
+        layout.prop(self, "preview_resolution", text="Résolution de la preview")
+        layout.prop(self, "create_thumbnail", text="générer preview automatique")
 
 def register():
     bpy.utils.register_class(archicad_exporter)
