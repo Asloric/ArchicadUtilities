@@ -80,6 +80,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 <![CDATA[
 pen     penAttribute_1
 set line_type lineTypeAttribute_1
+set fill fillAttribute_1
 {symbol_script}
 ]]>
 </Script_2D>
@@ -176,6 +177,18 @@ ROTZ 180
 				<ParFlg_Child/>
 			</Flags>
 			<Value>{preferences.default_line}</Value>
+		</LineType>
+
+		<Title Name="HATCHTYPE_TITLE">
+			<Description><![CDATA["Hachures"]]></Description>
+		</Title>
+
+		<LineType Name="fillAttribute_1">
+			<Description><![CDATA["Fond"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_hatch}</Value>
 		</LineType>
 
 
