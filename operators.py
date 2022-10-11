@@ -60,7 +60,6 @@ class export_properties(bpy.types.PropertyGroup):
     smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE")
     save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\Users\\Asloric\\Desktop\\")
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
-    create_thumbnail: bpy.props.BoolProperty(name="Create thumbnail", description="Create preview image. Might take a few minutes", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
@@ -119,7 +118,6 @@ class ACACCF_OT_export(bpy.types.Operator):
         prop = context.scene.acaccf
         layout = self.layout
         layout.prop(prop, "export_lod")
-        layout.prop(prop, "create_thumbnail")
         layout.prop(prop, "object_name")
         layout.prop(prop, "lod_0", text="Detailed" if prop.export_lod else "Model")
         if prop.export_lod:
@@ -140,7 +138,7 @@ class ACACCF_OT_export(bpy.types.Operator):
         props = context.scene.acaccf
         from . import mesh_to_gdl, mesh_to_symbol, xml_template, xml_lod
         
-        def process_object(props, lod, is_placable, lod_number= None, thumbnail_path=None):
+        def process_object(props, lod, is_placable, thumbnail_path, lod_number= None, ):
             if lod_number is not None:
                 object_name = props.object_name + "_LOD" + str(lod_number)
             else:
@@ -184,8 +182,8 @@ class ACACCF_OT_export(bpy.types.Operator):
                 object_materials = ["material_default"]
                 object_surfaces = ["sf_material_default"]
 
-            if thumbnail_path is not None:
-                create_thumbnail(lod, props.object_name, thumbnail_path)
+
+            create_thumbnail(lod, props.object_name, thumbnail_path)
 
 
             # complete xml
@@ -201,7 +199,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             bpy.ops.object.delete(use_global=True, confirm=False)
             return (size_x, size_y, size_z), object_materials, object_surfaces
 
-        def process_lod_xml(props, object_dimensions, object_surfaces, object_materials, ac_version, thumbnail_path=None):
+        def process_lod_xml(props, object_dimensions, object_surfaces, object_materials, ac_version, thumbnail_path):
             # complete xml
             xml = xml_lod.get_xml(props.object_name, props.is_placable, object_dimensions[0], object_dimensions[1], object_dimensions[2], object_surfaces, object_materials,  ac_version, thumbnail_path=thumbnail_path)
 
@@ -228,28 +226,24 @@ class ACACCF_OT_export(bpy.types.Operator):
         if props.export_lod and props.lod_0 and props.lod_1:
             i = 0
             for lod in [props.lod_0, props.lod_1]:
-                object_dimensions, object_materials, object_surfaces = process_object(props, lod, False, i, thumbnail_path=texture_folder)
+                object_dimensions, object_materials, object_surfaces = process_object(props, lod, False, thumbnail_path=texture_folder, lod_number=i )
 
 
                 subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', shell=True)
                 i += 1
-            if props.create_thumbnail:
-                create_thumbnail(props.lod_0, props.object_name, texture_folder)
+            create_thumbnail(props.lod_0, props.object_name, texture_folder)
             process_lod_xml(props, object_dimensions, object_surfaces, object_materials,  ac_version, thumbnail_path=texture_folder)
-            if props.create_thumbnail:
-                subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-            else:
-                subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
+            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
+            
+                #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         else:
             # Ensure at lease one object is being submitted to the process function
             lod = props.lod_0 if props.lod_0 else props.lod_1
             lod = context.active_object if not lod else lod
-            process_object(props, lod, props.is_placable, None, thumbnail_path=texture_folder)
-            if props.create_thumbnail:
-                subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-            else:
-                subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
+            process_object(props, lod, props.is_placable, thumbnail_path=texture_folder, lod_number=None )
+            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
+                #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
         
         #if os.path.exists(texture_folder):
         #    shutil.rmtree(texture_folder, ignore_errors=True)

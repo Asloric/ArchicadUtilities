@@ -33,6 +33,8 @@ class archicad_exporter(bpy.types.AddonPreferences):
     default_surface: bpy.props.IntProperty(name="default surface", default=0)
     default_material: bpy.props.IntProperty(name="default material", default=0)
     preview_resolution: bpy.props.IntProperty(name="preview resolution", default=64)
+    create_thumbnail: bpy.props.BoolProperty(name="Create thumbnail", description="Create preview image. Might take a few minutes", default=True)
+
     def draw(self, context):
         layout = self.layout.column()
         layout.prop(self, "LP_XMLConverter")
@@ -42,6 +44,7 @@ class archicad_exporter(bpy.types.AddonPreferences):
         layout.prop(self, "default_surface")
         layout.prop(self, "default_material")
         layout.prop(self, "preview_resolution")
+        layout.prop(self, "create_thumbnail")
 
 def register():
     bpy.utils.register_class(archicad_exporter)

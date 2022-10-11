@@ -88,7 +88,7 @@ set line_type lineTypeAttribute_1
 
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-ADDZ ZZYZX/2
+!ADDZ ZZYZX/2
 ROTZ 180
 {gdl_script}
 ]]>
