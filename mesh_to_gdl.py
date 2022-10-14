@@ -219,7 +219,7 @@ MATERIAL = []
 MATERIAL_ASSIGN = []
 TEXTURE = []
 Textures_ids = {}
-
+converted_materials = []
 face_id_bl2ac = {}
 
 def compare_verts_x_y_z(vert, previous_vert):
@@ -238,9 +238,12 @@ def set_materials(ob, save_directory):
     global MATERIAL_ASSIGN
     global TEXTURE
     global Textures_ids
+    global converted_materials
 
     for mat_index, mat_slot in enumerate(ob.material_slots):
-        if mat_slot.material:
+        # Prevents invalid and duplicated materials
+        if mat_slot.material and not mat_slot.material.name in converted_materials:
+            converted_materials.append(mat_slot.material.name)
             # create a list of PGON for each material
             PGON.append([])
             texture_name = None
@@ -330,6 +333,10 @@ def run_script(smooth_angle, save_directory):
     global MATERIAL
     global MATERIAL_ASSIGN
     global TEXTURE
+    global converted_materials
+    #Clear list
+    converted_materials = []
+
 
     ob = bpy.context.active_object
     me = ob.data

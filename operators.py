@@ -55,10 +55,11 @@ def create_thumbnail(object, object_name, save_path):
     bpy.context.window.scene = current_scene
         
 class export_properties(bpy.types.PropertyGroup):
-    object_name: bpy.props.StringProperty(name="Object name", default="Object")
+
+    object_name: bpy.props.StringProperty(name="Object name", default="")
     is_placable: bpy.props.BoolProperty(default=True, description="Will the object be viewable in search popup")
     smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE")
-    save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\Users\\Asloric\\Desktop\\")
+    save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\")
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
@@ -75,6 +76,9 @@ class ACACCF_OT_apply(bpy.types.Operator):
     bl_idname = "acaccf.apply"
     bl_label = "Apply object"
     bl_description = "Apply modifiers and join objects. Mendatory step for proper export."
+
+    merge_by_distance: bpy.props.BoolProperty(default=True, name="merge by distance", description="Merge vertices by distance")
+    delete_loose: bpy.props.BoolProperty(default=True, name="delete_loose", description="Delete loose geometry")
 
     @classmethod
     def poll(cls, context):
@@ -105,10 +109,18 @@ class ACACCF_OT_apply(bpy.types.Operator):
             apply_modifiers(obj)
 
         bpy.ops.object.join()
-
-
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        bpy.ops.object.mode_set(mode='EDIT')
+        if self.merge_by_distance:
+            bpy.ops.mesh.remove_doubles()
+        if self.delete_loose:
+            bpy.ops.mesh.delete_loose(use_faces=True)
+        bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
+        bpy.ops.object.mode_set(mode='OBJECT')
         return {"FINISHED"}
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
 
 class ACACCF_OT_export(bpy.types.Operator):
     bl_idname = "acaccf.export"
@@ -176,8 +188,9 @@ class ACACCF_OT_export(bpy.types.Operator):
             object_surfaces = []
             for material in lod.data.materials:
                 if material:
-                    object_materials.append(mesh_to_gdl.cleanString(material.name))
-                    object_surfaces.append(f'sf_{mesh_to_gdl.cleanString(material.name)}')
+                    if not mesh_to_gdl.cleanString(material.name) in object_materials:
+                        object_materials.append(mesh_to_gdl.cleanString(material.name))
+                        object_surfaces.append(f'sf_{mesh_to_gdl.cleanString(material.name)}')
             if not len(object_materials) > 0:
                 object_materials = ["material_default"]
                 object_surfaces = ["sf_material_default"]
@@ -229,12 +242,13 @@ class ACACCF_OT_export(bpy.types.Operator):
                 object_dimensions, object_materials, object_surfaces = process_object(props, lod, False, thumbnail_path=texture_folder, lod_number=i )
 
 
-                r = subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', shell=True)
+                convertion_result = subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', stdout=subprocess.PIPE)
+                print(convertion_result.stdout.decode("utf-8"))
                 i += 1
             create_thumbnail(props.lod_0, props.object_name, texture_folder)
             process_lod_xml(props, object_dimensions, object_surfaces, object_materials,  ac_version, thumbnail_path=texture_folder)
-            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-            
+            convertion_result = subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
+            print(convertion_result.stdout.decode("utf-8"))
                 #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         else:
@@ -242,11 +256,9 @@ class ACACCF_OT_export(bpy.types.Operator):
             lod = props.lod_0 if props.lod_0 else props.lod_1
             lod = context.active_object if not lod else lod
             process_object(props, lod, props.is_placable, thumbnail_path=texture_folder, lod_number=None )
-            subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-                #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
-        
-        #if os.path.exists(texture_folder):
-        #    shutil.rmtree(texture_folder, ignore_errors=True)
+            convertion_result= subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
+            print(convertion_result.stdout.decode("utf-8"))
+
 
         return{'FINISHED'}
 
@@ -269,9 +281,13 @@ class ACACCF_OT_export(bpy.types.Operator):
         else:
             props.lod_0 = context.active_object
         
-        if not props.object_name:
+        if props.object_name == "":
             # Set the blender's file name as object name. 
-            props.object_name = bpy.path.basename(bpy.context.blend_data.filepath)
+            props.object_name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "")
+
+        if props.save_path == "C:\\" or not props.save_path:
+            # Set the blender's file name as object name. 
+            props.save_path = os.path.dirname(bpy.context.blend_data.filepath) + "\\"
             
         return context.window_manager.invoke_props_dialog(self)
 
