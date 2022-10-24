@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 from math import *
+from .import local_dict
 
 def cleanString(incomingString):
     newstring = incomingString
@@ -34,10 +35,10 @@ def cleanString(incomingString):
     newstring = newstring.replace("/","")        
     newstring = newstring.replace(".","")        
     if len(newstring) > 28:
-        return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}
+        return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}*
     else:
-        if newstring == "Material":
-            return "bl_Material"
+        if newstring.upper() in local_dict.gdl_keywords:
+            return "bl_" + newstring
         return newstring
 
 
