@@ -34,6 +34,7 @@ def cleanString(incomingString):
     newstring = newstring.replace("\\","")
     newstring = newstring.replace("/","")        
     newstring = newstring.replace(".","")        
+    newstring = newstring.replace(" ","_")        
     if len(newstring) > 28:
         return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}*
     else:

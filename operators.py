@@ -243,12 +243,12 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 
                 convertion_result = subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', stdout=subprocess.PIPE)
-                print(convertion_result.stdout.decode("utf-8"))
+                #print(convertion_result.stdout.decode("utf-8"))
                 i += 1
             create_thumbnail(props.lod_0, props.object_name, texture_folder)
             process_lod_xml(props, object_dimensions, object_surfaces, object_materials,  ac_version, thumbnail_path=texture_folder)
             convertion_result = subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
-            print(convertion_result.stdout.decode("utf-8"))
+            #print(convertion_result.stdout.decode("utf-8"))
                 #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
         else:
