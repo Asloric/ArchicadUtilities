@@ -200,7 +200,7 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 
             # complete xml
-            xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, 90, 51", mesh_script, size_x, size_y, size_z, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
+            xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, -90, 51", mesh_script, size_x, size_y, size_z, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
 
 
             target_filepath = props.save_path + object_name + ".xml"
