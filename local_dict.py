@@ -1,4 +1,5 @@
 gdl_keywords = [
+"TEXTURE",
 "FILE_DEPENDENCE",
 "MOD",
 "AND",
