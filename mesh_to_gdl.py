@@ -274,8 +274,9 @@ def set_materials(ob, save_directory):
             
             if texture_name:
                 # TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" "{texture_name}.png", 1, 1, 1, 0')
-                TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" {mat_index + 1} , 1, 1, 1, 0')
-                Textures_ids[mat_index + 1] = f"{texture_name}.png"
+                if not f"{texture_name}.png" in Textures_ids.values():
+                    TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" {len(Textures_ids) + 1} , 1, 1, 1, 0')
+                    Textures_ids[len(Textures_ids) + 1] = f"{texture_name}.png"
                 MATERIAL.append(f'''
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
@@ -339,6 +340,8 @@ def run_script(smooth_angle, save_directory):
     global MATERIAL_ASSIGN
     global TEXTURE
     global converted_materials
+    global face_id_bl2ac
+    global Textures_ids
     #Clear list
     converted_materials = []
 
@@ -458,4 +461,9 @@ def run_script(smooth_angle, save_directory):
     MATERIAL = []
     MATERIAL_ASSIGN = []
     TEXTURE = []
-    return new_file, Textures_ids
+    _textures_ids = Textures_ids
+    Textures_ids = {}
+    converted_materials = []
+    face_id_bl2ac = {}
+    
+    return new_file, _textures_ids
