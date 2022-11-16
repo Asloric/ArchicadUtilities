@@ -19,7 +19,7 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 
 	parameter_surface = ""
 
-	for surface_title in surfaces:
+	for sf_index, surface_title in enumerate(surfaces):
 		parameter_surface += f'''
 
 		<Boolean Name="{"ovr_" + surface_title}">
@@ -38,19 +38,14 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 			<Value>{preferences.default_surface}</Value>
 		</Material>
 
-'''
-
-	parameter_material = ""
-
-	for material_title in materials:
-		parameter_surface += f'''
-		<BuildingMaterial Name="{material_title}">
-			<Description><![CDATA["{material_title}"]]></Description>
+		<BuildingMaterial Name="{materials[sf_index]}">
+			<Description><![CDATA["{materials[sf_index]}"]]></Description>
 			<Flags>
 				<ParFlg_Child/>
 			</Flags>
 			<Value>{preferences.default_material}</Value>
 		</BuildingMaterial>
+
 '''
 
 	if thumbnail_path:
@@ -128,7 +123,8 @@ stMacro_choose[4] = 'MVO'
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_PR SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[]]>
+<![CDATA[
+FILE_DEPENDANCE "{object_name}_LOD1", "{object_name}_LOD0"]]>
 </Script_PR>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -324,14 +320,6 @@ hideparameter "macro", "macro_choose"
 			</Flags>
 			<Value>{preferences.default_line}</Value>
 		</LineType>
-
-
-		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
-
-		<Title Name="MATERIAL_TITLE">
-			<Description><![CDATA["MATERIAUX"]]></Description>
-		</Title>
-		{parameter_material}
 
 
 		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->

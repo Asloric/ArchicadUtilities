@@ -21,7 +21,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 	parameter_surface = ""
 
-	for surface_title in surfaces:
+	for sf_index, surface_title in enumerate(surfaces):
 		parameter_surface += f'''
 
 		<Boolean Name="{"ovr_" + surface_title}">
@@ -40,20 +40,16 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 			<Value>{preferences.default_surface}</Value>
 		</Material>
 
-'''
-
-	parameter_material = ""
-
-	for material_title in materials:
-		parameter_surface += f'''
-		<BuildingMaterial Name="{material_title}">
-			<Description><![CDATA["{material_title}"]]></Description>
+		<BuildingMaterial Name="{materials[sf_index]}">
+			<Description><![CDATA["{materials[sf_index]}"]]></Description>
 			<Flags>
 				<ParFlg_Child/>
 			</Flags>
 			<Value>{preferences.default_material}</Value>
 		</BuildingMaterial>
 '''
+
+
 	if thumbnail_path:
 		thumbnail = f'<Picture MIME="image/png" SectVersion="19" SectionFlags="0" SubIdent="0" path="{object_name}_preview.png"/>'
 	else:
@@ -92,6 +88,7 @@ set fill fillAttribute_1
 !ADDZ ZZYZX/2
 !ROTZ 180
 {gdl_script}
+EXIT ZZYZX, A, B
 ]]>
 </Script_3D>
 
@@ -191,13 +188,6 @@ set fill fillAttribute_1
 			<Value>{preferences.default_hatch}</Value>
 		</LineType>
 
-
-		<!-- BUILDING_MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
-
-		<Title Name="MATERIAL_TITLE">
-			<Description><![CDATA["MATERIAUX"]]></Description>
-		</Title>
-		{parameter_material}
 
 
 		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
