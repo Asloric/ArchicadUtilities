@@ -25,9 +25,10 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 		parameter_surface += f'''
 
 		<Boolean Name="{"ovr_" + surface_title}">
-			<Description><![CDATA["Remplacer surface"]]></Description>
+			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
 			<Fix/>
 			<Flags>
+				<ParFlg_Child/>
 			</Flags>
 			<Value>0</Value>
 		</Boolean>
@@ -177,7 +178,7 @@ EXIT ZZYZX, A, B
 		</LineType>
 
 		<Title Name="HATCHTYPE_TITLE">
-			<Description><![CDATA["Hachures"]]></Description>
+			<Description><![CDATA["HACHURES"]]></Description>
 		</Title>
 
 		<LineType Name="fillAttribute_1">

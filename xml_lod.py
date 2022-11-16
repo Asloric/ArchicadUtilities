@@ -23,9 +23,10 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 		parameter_surface += f'''
 
 		<Boolean Name="{"ovr_" + surface_title}">
-			<Description><![CDATA["Remplacer surface"]]></Description>
+			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
 			<Fix/>
 			<Flags>
+				<ParFlg_Child/>
 			</Flags>
 			<Value>0</Value>
 		</Boolean>
