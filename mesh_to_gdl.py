@@ -160,7 +160,6 @@ class EDGE():
             #self.__class__.instances.append(self)
             self.__class__.rinstances.insert(0, self)
             setattr(self, "index", (self.__class__.instances.index(edge)+1) * -1)
-
             return self, edge
 
         else: return edge, None
