@@ -20,15 +20,15 @@ def create_thumbnail(object, object_name, save_path):
 
     # if no camera, create one
     if not bpy.context.scene.camera:
-        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=(1.0738, 0.0130058, 1.16881), scale=(1, 1, 1))
+        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=(1.222, 0.0, 0.523), scale=(1, 1, 1))
 
-    sun = False
-    for ob in bpy.context.scene.objects:
-        if ob.type == "LIGHT":
-            sun = True
+    # sun = False
+    # for ob in bpy.context.scene.objects:
+    #     if ob.type == "LIGHT":
+    #         sun = True
 
-    if not sun:
-        bpy.ops.object.light_add(type='SUN', align='WORLD', location=(0, 0, 0), rotation=(0.785398, 0.785398, -1.5708), scale=(1, 1, 1))
+    # if not sun:
+    #     bpy.ops.object.light_add(type='SUN', align='WORLD', location=(0, 0, 0), rotation=(0.785398, 0.785398, -1.5708), scale=(1, 1, 1))
 
     bpy.context.scene.render.resolution_y = preferences.preview_resolution
     bpy.context.scene.render.resolution_x = preferences.preview_resolution
@@ -45,6 +45,7 @@ def create_thumbnail(object, object_name, save_path):
     filename = object_name + "_preview.png"
     filepath = save_path + "\\" + filename
     bpy.context.scene.render.filepath = filepath
+    bpy.context.scene.render.engine = "CYCLES"
     object.select_set(True)
     bpy.ops.view3d.camera_to_view_selected()
     bpy.context.scene.camera.data.clip_start = 0.000001
