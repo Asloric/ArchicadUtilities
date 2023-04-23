@@ -107,8 +107,8 @@ class TEVE():
   
 class EDGE():
     instances = []
-    rinstances = []
     bl_instances = {}
+    bl_instances_trigger = False
 
     def __init__(self, v1, v2, smooth, bl_index, bl_edge):
         self.bl_edge = bl_edge
@@ -133,19 +133,17 @@ class EDGE():
 
     def __str__(self):
         return(str(self.bl_index))
-        return(f"{self.index}:  {self.v1.index}, {self.v2.index}")
 
     @classmethod
     def clear(cls):
         cls.instances = []
-        cls.rinstances = []
         cls.bl_instances = {}
 
     @classmethod
     def new_edge(cls, v1, v2, smooth, bl_index, bl_edge):
         self = cls(v1, v2, smooth, bl_index, bl_edge)
         # Get the mirroring edge if exists
-        if len(cls.rinstances):
+        if cls.bl_instances_trigger:
             is_present, edge = self.is_present(cls.bl_instances, self)
         else:
             is_present = False
@@ -153,8 +151,8 @@ class EDGE():
             
         # If no mirroring edge, create instance and return self
         if is_present == False and edge is None:
+            cls.bl_instances_trigger = True
             cls.instances.append(self)
-            cls.rinstances.insert(0, self)
             if not cls.bl_instances.get(bl_edge):
                 cls.bl_instances[bl_edge] = [self]
             else:
@@ -165,8 +163,8 @@ class EDGE():
         
         # if mirroring edge is found, 
         elif not is_present and edge is not None:
+            cls.bl_instances_trigger = True
             #self.__class__.instances.append(self)
-            cls.rinstances.insert(0, self)
             if not cls.bl_instances.get(bl_edge):
                 cls.bl_instances[bl_edge] = [self]
             else:
