@@ -28,7 +28,7 @@ class archicad_exporter(bpy.types.AddonPreferences):
         ("43", "Archicad 25", "Archicad 25"),
         ("44", "Archicad 26", "Archicad 26"),
         ])
-    camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523))
+    camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523), unit='ROTATION', subtype="EULER")
     default_pen: bpy.props.IntProperty(name="default pen", default=5)
     default_line: bpy.props.IntProperty(name="default line", default=1)
     default_hatch: bpy.props.IntProperty(name="default line", default=21)
@@ -39,6 +39,10 @@ class archicad_exporter(bpy.types.AddonPreferences):
 
     def draw(self, context):
         layout = self.layout.column()
+
+        layout.prop(self, "camera_angle")
+
+
         layout.prop(self, "LP_XMLConverter")
         layout.prop(self, "ac_version")
         layout.prop(self, "default_pen", text="Stylo de contour")
