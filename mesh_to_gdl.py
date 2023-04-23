@@ -50,6 +50,8 @@ def cleanString(incomingString):
 class TEVE():
     instances = []
     rinstances = []
+    coords_dict = {} # Store coordinates to speed up "is present" function
+    
     def __init__(self, x,y,z,u,v, index) -> None:
         self.index = index
         self.x = x
@@ -57,29 +59,28 @@ class TEVE():
         self.z = z
         self.u = u
         self.v = v
-        self.hash = self.__hash()
+
 
 
     @classmethod
     def clear(cls):
         cls.instances = []
         cls.rinstances = []
+        cls.coords_dict = {}
+
 
     @classmethod
     def new_teve(cls, x,y,z,u,v, index):
         self = cls(x,y,z,u,v, index)
         is_present = self.is_present(self)
-        if is_present == False:
+        if not is_present:
+            self.__class__.coords_dict[(x,y,z,u,v)] = self
             self.__class__.instances.append(self)
             self.__class__.rinstances.insert(0, self)
             setattr(self, "index", self.__class__.instances.index(self))
             return self
         else: return is_present
 
-    @classmethod
-    def print(cls):
-        for teve in cls.instances:
-            print(f"TEVE {teve.x}, {teve.y}, {teve.z}, {teve.u}, {teve.v}   !{teve.index}")
 
     @classmethod
     def get_output(cls):
@@ -90,7 +91,8 @@ class TEVE():
 
     @classmethod
     def is_present(cls, self):
-        for teve in self.__class__.rinstances:
+        return cls.coords_dict.get((self.x, self.y, self.z, self.u, self.v))
+        for teve in cls.rinstances:
             if self.x == teve.x:
                 if self.y == teve.y:
                     if self.z == teve.z:
@@ -99,11 +101,6 @@ class TEVE():
                                 return teve
 
         return False
-
-    def __hash(self):
-        return hash((self.x, self.y, self.z, self.u, self.v))
-
-
   
 class EDGE():
     instances = []
@@ -138,6 +135,7 @@ class EDGE():
     def clear(cls):
         cls.instances = []
         cls.bl_instances = {}
+        cls.bl_instances_trigger = False
 
     @classmethod
     def new_edge(cls, v1, v2, smooth, bl_index, bl_edge):
