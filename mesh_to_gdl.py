@@ -2,6 +2,7 @@ import bpy
 import bmesh
 from math import *
 from .import local_dict
+from time import time
 
 def cleanString(incomingString):
     newstring = incomingString
@@ -107,6 +108,7 @@ class TEVE():
 class EDGE():
     instances = []
     rinstances = []
+    bl_instances = {}
 
     def __init__(self, v1, v2, smooth, bl_index, bl_edge):
         self.bl_edge = bl_edge
@@ -130,36 +132,46 @@ class EDGE():
 
 
     def __str__(self):
-        return(str(self.index))
+        return(str(self.bl_index))
         return(f"{self.index}:  {self.v1.index}, {self.v2.index}")
 
     @classmethod
     def clear(cls):
         cls.instances = []
         cls.rinstances = []
+        cls.bl_instances = {}
 
     @classmethod
     def new_edge(cls, v1, v2, smooth, bl_index, bl_edge):
         self = cls(v1, v2, smooth, bl_index, bl_edge)
         # Get the mirroring edge if exists
-        if len(self.__class__.rinstances):
-            is_present, edge = self.is_present(self.__class__.rinstances, self)
+        if len(cls.rinstances):
+            is_present, edge = self.is_present(cls.bl_instances, self)
         else:
             is_present = False
             edge = None
             
         # If no mirroring edge, create instance and return self
         if is_present == False and edge is None:
-            self.__class__.instances.append(self)
-            self.__class__.rinstances.insert(0, self)
-            setattr(self, "index", (self.__class__.instances.index(self)+1))
+            cls.instances.append(self)
+            cls.rinstances.insert(0, self)
+            if not cls.bl_instances.get(bl_edge):
+                cls.bl_instances[bl_edge] = [self]
+            else:
+                cls.bl_instances[bl_edge].append(self)
+
+            setattr(self, "index", (cls.instances.index(self)+1))
             return self, None
         
         # if mirroring edge is found, 
         elif not is_present and edge is not None:
             #self.__class__.instances.append(self)
-            self.__class__.rinstances.insert(0, self)
-            setattr(self, "index", (self.__class__.instances.index(edge)+1) * -1)
+            cls.rinstances.insert(0, self)
+            if not cls.bl_instances.get(bl_edge):
+                cls.bl_instances[bl_edge] = [self]
+            else:
+                cls.bl_instances[bl_edge].append(self)
+            setattr(self, "index", (cls.instances.index(edge)+1) * -1)
             return self, edge
 
         else: return edge, None
@@ -174,48 +186,31 @@ class EDGE():
             if edge.smooth:
                 smooth = 1
             elif double_face:
-                smooth = 262146
+                smooth = 262144
             else:
                 smooth = 0
             
             print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.index}")
 
+    
     @classmethod
-    def get_output(cls, edge = None):
-        list = []
-        for edge in cls.instances:
-            double_face = False
-            smooth = 262146
-            if edge.f2 and edge.f1:
-                double_face = True
-            if edge.smooth:
-                smooth = 262146
-            elif double_face:
-                smooth = 262146
-            else:
-                smooth = 262146
-                
-            list.append(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.index}")
-        return list
+    def get_output(cls, edge=None):
+        output_list = [
+            f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {(2 if edge.smooth else 262144) if edge.f2 and edge.f1 else 0}   !#{edge.index}"
+            for edge in cls.instances
+        ]
+        return output_list
 
     @staticmethod
-    def is_present(rinstances, self):
-        for edge in rinstances:
-            if edge.bl_edge == self.bl_edge:
-                if self.v1.index in [edge.v1.index,edge.v2.index]:
-                    if self.v2.index in [edge.v1.index,edge.v2.index]:
-                        if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
-                            return True, edge
-                        elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
-                            return False, edge
-        else:
-            return False, None
+    def is_present(bl_instances, self):
+        if self.bl_edge in bl_instances.keys():
+            for edge in bl_instances[self.bl_edge]:
+                if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
+                    return True, edge
+                elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
+                    return False, edge
+        return False, None
 
-    def __hash(self):
-        return hash((self.v1, self.v2))
-
-    def __rhash(self):
-        return hash((self.v2, self.v1))
 
 PGON = []
 VECT_LIST = []
@@ -382,15 +377,16 @@ def run_script(smooth_angle, save_directory):
                     )
 
                     # Get the edge angle with other faces
-                    edge_angle = loop.edge.calc_face_angle(99)
-                    if edge_angle == 99:
-                        smooth = None
-                    elif edge_angle <= smooth_angle:
-                        smooth = True
+                    if loop.edge.smooth:
+                        edge_angle = loop.edge.calc_face_angle(99)
+                        if edge_angle == 99:
+                            smooth = None
+                        elif edge_angle <= smooth_angle:
+                            smooth = True
+                        else:
+                            smooth = False
                     else:
                         smooth = False
-                    
-                    smooth = False if not loop.edge.smooth else smooth
                             
                             
                     # If not last edge of face
@@ -453,6 +449,8 @@ def run_script(smooth_angle, save_directory):
         new_file += PGON
         new_file.append("BODY 1")
 
+
+    
     TEVE.clear()
     EDGE.clear()
     PGON = []
@@ -465,4 +463,5 @@ def run_script(smooth_angle, save_directory):
     converted_materials = []
     face_id_bl2ac = {}
     
+
     return new_file, _textures_ids
