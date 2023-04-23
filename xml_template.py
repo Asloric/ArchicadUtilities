@@ -1,7 +1,7 @@
 import datetime
 import bpy
 
-def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, lod, Textures_ids, surfaces = [], materials = [],  ac_version:int=43, thumbnail_path=None):
+def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, shift_z, lod, Textures_ids, surfaces = [], materials = [],  ac_version:int=43, thumbnail_path=None):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
@@ -86,7 +86,7 @@ set fill fillAttribute_1
 
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-!ADDZ ZZYZX/2
+ADDZ {shift_z}
 !ROTZ 180
 MULX A*{1/bound_x}
 MULY B*{1/bound_y}

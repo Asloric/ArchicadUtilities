@@ -182,7 +182,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             #symbol_script = mesh_to_symbol.run_script(self.save_path)
 
             # create 3d script
-            mesh_script, Textures_ids = mesh_to_gdl.run_script(props.smooth_angle, texture_folder)
+            mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder)
             
             #get back to object mode
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -204,7 +204,7 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 
             # complete xml
-            xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, -90, 51", mesh_script, size_x, size_y, size_z, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
+            xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, -90, 51", mesh_script, size_x, size_y, size_z, z_shift, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
 
 
             target_filepath = props.save_path + object_name + ".xml"

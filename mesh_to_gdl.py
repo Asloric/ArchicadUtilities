@@ -50,6 +50,7 @@ class TEVE():
     instances = []
     rinstances = []
     coords_dict = {} # Store coordinates to speed up "is present" function
+    min_z = 0.0  # Used to shift model Up, to always have origin to ground level.
 
     def __init__(self, x,y,z,u,v, index) -> None:
         self.index = index
@@ -58,12 +59,16 @@ class TEVE():
         self.z = z
         self.u = u
         self.v = v
+        float_z = float(z)
+        if float_z < TEVE.min_z:
+            TEVE.min_z = float_z
 
     @classmethod
     def clear(cls):
         cls.instances = []
         cls.rinstances = []
         cls.coords_dict = {}
+        cls.min_z = 0
 
     @classmethod
     def new_teve(cls, x,y,z,u,v, index):
@@ -410,6 +415,7 @@ def run_script(smooth_angle, save_directory):
         new_file += PGON
         new_file.append("BODY 1")
 
+    z_shift = TEVE.min_z * -1
     TEVE.clear()
     EDGE.clear()
     PGON = []
@@ -422,4 +428,4 @@ def run_script(smooth_angle, save_directory):
     converted_materials = []
     face_id_bl2ac = {}
     
-    return new_file, _textures_ids
+    return new_file, _textures_ids, z_shift
