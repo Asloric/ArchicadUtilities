@@ -2,7 +2,6 @@ import bpy
 import bmesh
 from math import *
 from .import local_dict
-from time import time
 
 def cleanString(incomingString):
     newstring = incomingString
@@ -51,7 +50,7 @@ class TEVE():
     instances = []
     rinstances = []
     coords_dict = {} # Store coordinates to speed up "is present" function
-    
+
     def __init__(self, x,y,z,u,v, index) -> None:
         self.index = index
         self.x = x
@@ -60,27 +59,23 @@ class TEVE():
         self.u = u
         self.v = v
 
-
-
     @classmethod
     def clear(cls):
         cls.instances = []
         cls.rinstances = []
         cls.coords_dict = {}
 
-
     @classmethod
     def new_teve(cls, x,y,z,u,v, index):
         self = cls(x,y,z,u,v, index)
         is_present = self.is_present(self)
         if not is_present:
-            self.__class__.coords_dict[(x,y,z,u,v)] = self
-            self.__class__.instances.append(self)
-            self.__class__.rinstances.insert(0, self)
-            setattr(self, "index", self.__class__.instances.index(self))
+            cls.coords_dict[(x,y,z,u,v)] = self
+            cls.instances.append(self)
+            cls.rinstances.insert(0, self)
+            setattr(self, "index", cls.instances.index(self))
             return self
         else: return is_present
-
 
     @classmethod
     def get_output(cls):
@@ -92,20 +87,12 @@ class TEVE():
     @classmethod
     def is_present(cls, self):
         return cls.coords_dict.get((self.x, self.y, self.z, self.u, self.v))
-        for teve in cls.rinstances:
-            if self.x == teve.x:
-                if self.y == teve.y:
-                    if self.z == teve.z:
-                        if self.u == teve.u:
-                            if self.v == teve.v:
-                                return teve
 
-        return False
   
 class EDGE():
     instances = []
+    rinstances = []
     bl_instances = {}
-    bl_instances_trigger = False
 
     def __init__(self, v1, v2, smooth, bl_index, bl_edge):
         self.bl_edge = bl_edge
@@ -129,40 +116,38 @@ class EDGE():
 
 
     def __str__(self):
-        return(str(self.bl_index))
+        return(str(self.index))
 
     @classmethod
     def clear(cls):
         cls.instances = []
+        cls.rinstances = []
         cls.bl_instances = {}
-        cls.bl_instances_trigger = False
 
     @classmethod
     def new_edge(cls, v1, v2, smooth, bl_index, bl_edge):
         self = cls(v1, v2, smooth, bl_index, bl_edge)
         # Get the mirroring edge if exists
-        if cls.bl_instances_trigger:
+        if len(cls.rinstances):
             is_present, edge = self.is_present(cls.bl_instances, self)
         else:
             is_present = False
             edge = None
             
         # If no mirroring edge, create instance and return self
-        if is_present == False and edge is None:
-            cls.bl_instances_trigger = True
+        if not is_present and not edge:
             cls.instances.append(self)
+            cls.rinstances.insert(0, self)
+            setattr(self, "index", (cls.instances.index(self)+1))
             if not cls.bl_instances.get(bl_edge):
                 cls.bl_instances[bl_edge] = [self]
             else:
                 cls.bl_instances[bl_edge].append(self)
-
-            setattr(self, "index", (cls.instances.index(self)+1))
             return self, None
         
         # if mirroring edge is found, 
         elif not is_present and edge is not None:
-            cls.bl_instances_trigger = True
-            #self.__class__.instances.append(self)
+            cls.rinstances.insert(0, self)
             if not cls.bl_instances.get(bl_edge):
                 cls.bl_instances[bl_edge] = [self]
             else:
@@ -173,24 +158,7 @@ class EDGE():
         else: return edge, None
 
     @classmethod
-    def print(cls, edge = None):
-        for edge in cls.instances:
-            double_face = False
-            smooth = 262146
-            if edge.f2 and edge.f1:
-                double_face = True
-            if edge.smooth:
-                smooth = 1
-            elif double_face:
-                smooth = 262144
-            else:
-                smooth = 0
-            
-            print(f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {smooth}   !#{edge.index}")
-
-    
-    @classmethod
-    def get_output(cls, edge=None):
+    def get_output(cls):
         output_list = [
             f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {(2 if edge.smooth else 262144) if edge.f2 and edge.f1 else 0}   !#{edge.index}"
             for edge in cls.instances
@@ -199,12 +167,12 @@ class EDGE():
 
     @staticmethod
     def is_present(bl_instances, self):
-        if self.bl_edge in bl_instances.keys():
-            for edge in bl_instances[self.bl_edge]:
-                if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
-                    return True, edge
-                elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
-                    return False, edge
+        edges = bl_instances.get(self.bl_edge, [])
+        for edge in edges:
+            if self.v1.index == edge.v1.index and self.v2.index == edge.v2.index:
+                return True, edge
+            elif self.v1.index == edge.v2.index and self.v2.index == edge.v1.index:
+                return False, edge  
         return False, None
 
 
@@ -270,7 +238,6 @@ def set_materials(ob, save_directory):
                 MATERIAL.append(f'''
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
-
                     ''')
             elif principled_node:
                 color = principled_node.inputs[0].default_value
@@ -281,7 +248,6 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 MATERIAL.append(f'''
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
 DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
-
                     ''')
 
             else:
@@ -289,7 +255,6 @@ DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 
 DEFINE MATERIAL "material_{mat_name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 !bms_{mat_name} = 0
 r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
-
                     ''')
             
             MATERIAL_ASSIGN.append(f'''
@@ -445,8 +410,6 @@ def run_script(smooth_angle, save_directory):
         new_file += PGON
         new_file.append("BODY 1")
 
-
-    
     TEVE.clear()
     EDGE.clear()
     PGON = []
@@ -459,5 +422,4 @@ def run_script(smooth_angle, save_directory):
     converted_materials = []
     face_id_bl2ac = {}
     
-
     return new_file, _textures_ids
