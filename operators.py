@@ -1,6 +1,7 @@
 import bpy
 import subprocess
 import os
+from time import time
 import shutil
 
 def create_thumbnail(object, object_name, save_path):
@@ -20,7 +21,7 @@ def create_thumbnail(object, object_name, save_path):
 
     # if no camera, create one
     if not bpy.context.scene.camera:
-        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=(1.222, 0.0, 0.523), scale=(1, 1, 1))
+        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
 
     # sun = False
     # for ob in bpy.context.scene.objects:
@@ -59,7 +60,7 @@ class export_properties(bpy.types.PropertyGroup):
 
     object_name: bpy.props.StringProperty(name="Object name", default="")
     is_placable: bpy.props.BoolProperty(default=True, description="Will the object be viewable in search popup")
-    smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE")
+    smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE", description="Below this angle, edges will be smooth if not marked as sharp.")
     save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\")
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
@@ -148,6 +149,8 @@ class ACACCF_OT_export(bpy.types.Operator):
         return context.active_object is not None and context.active_object.type == "MESH"
 
     def execute(self, context):
+        start_time = time()
+
         props = context.scene.acaccf
         from . import mesh_to_gdl, mesh_to_symbol, xml_template, xml_lod
         
@@ -260,7 +263,8 @@ class ACACCF_OT_export(bpy.types.Operator):
             convertion_result= subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
             print(convertion_result.stdout.decode("utf-8"))
 
-
+        end_time = time()
+        print(f"elapsed_time = {end_time - start_time}")
         return{'FINISHED'}
 
     def invoke(self, context, event):
