@@ -324,86 +324,78 @@ def run_script(smooth_angle, save_directory):
         PGON = []
         VECT_LIST = []
             
+        faces = [f for f in bm.faces if f.material_index == m_index]
         # For each face in the mesh
-        for face in bm.faces:
-            if face.material_index == m_index:
-                face_vertices = {}
-                face_edges = {}
+        for face in faces:
+            face_vertices = {}
+            face_edges = {}
 
-                # For each loop in the face (loop = edge)
-                for n_loop, loop in enumerate(face.loops):
-                    # Create a TEVE with first vertice XYZUV infos
-                    face_vertices[n_loop] = TEVE.new_teve(
-                        "%.4f" % loop.vert.co[0],
-                        "%.4f" % loop.vert.co[1],
-                        "%.4f" % loop.vert.co[2],
-                        "%.4f" % loop[uv_layer].uv[0],
-                        "%.4f" % loop[uv_layer].uv[1],
+            max_n_loop = len(face.loops) - 1
+            # For each loop in the face (loop = edge)
+            for n_loop, loop in enumerate(face.loops):
+                # Create a TEVE with first vertice XYZUV infos
+                face_vertices[n_loop] = TEVE.new_teve(
+                    "%.4f" % loop.vert.co[0],
+                    "%.4f" % loop.vert.co[1],
+                    "%.4f" % loop.vert.co[2],
+                    "%.4f" % loop[uv_layer].uv[0],
+                    "%.4f" % loop[uv_layer].uv[1],
+                    loop.vert.index
+                )
+
+                # Get the edge angle with other faces
+                smooth = loop.edge.smooth and loop.edge.calc_face_angle(99) <= smooth_angle if loop.edge.smooth else False
+                        
+                        
+                # If not last edge of face
+                # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
+                if not n_loop == max_n_loop:
+                    face_vertices[n_loop+1] = TEVE.new_teve(
+                        "%.4f" % face.loops[n_loop+1].vert.co[0],
+                        "%.4f" % face.loops[n_loop+1].vert.co[1],
+                        "%.4f" % face.loops[n_loop+1].vert.co[2],
+                        "%.4f" % face.loops[n_loop+1][uv_layer].uv[0],
+                        "%.4f" % face.loops[n_loop+1][uv_layer].uv[1],
                         loop.vert.index
                     )
+                    
+                    edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index, loop.edge)
+                    
+                    face_edges[loop.edge.index] = edge
+                    
+                    if existing_edge:
+                        edge = existing_edge
+                    edge.add_face(len(PGON)+1)
 
-                    # Get the edge angle with other faces
-                    if loop.edge.smooth:
-                        edge_angle = loop.edge.calc_face_angle(99)
-                        if edge_angle == 99:
-                            smooth = None
-                        elif edge_angle <= smooth_angle:
-                            smooth = True
-                        else:
-                            smooth = False
-                    else:
-                        smooth = False
-                            
-                            
-                    # If not last edge of face
-                    # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
-                    if not n_loop == len(face.loops) -1:
-                        face_vertices[n_loop+1] = TEVE.new_teve(
-                            "%.4f" % face.loops[n_loop+1].vert.co[0],
-                            "%.4f" % face.loops[n_loop+1].vert.co[1],
-                            "%.4f" % face.loops[n_loop+1].vert.co[2],
-                            "%.4f" % face.loops[n_loop+1][uv_layer].uv[0],
-                            "%.4f" % face.loops[n_loop+1][uv_layer].uv[1],
-                            loop.vert.index
-                        )
-                        
-                        edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[n_loop+1], smooth, loop.edge.index, loop.edge)
-                        
-                        face_edges[loop.edge.index] = edge
-                        
-                        if existing_edge:
-                            edge = existing_edge
-                        edge.add_face(len(PGON)+1)
+                else:
+                    face_vertices[0] = TEVE.new_teve(
+                        "%.4f" % face.loops[0].vert.co[0],
+                        "%.4f" % face.loops[0].vert.co[1],
+                        "%.4f" % face.loops[0].vert.co[2],
+                        "%.4f" % face.loops[0][uv_layer].uv[0],
+                        "%.4f" % face.loops[0][uv_layer].uv[1],
+                        loop.vert.index
+                    )  
+                    
+                    edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index, loop.edge) 
+                    face_edges[loop.edge.index] = edge
+                    if existing_edge:
+                        edge = existing_edge
+                    edge.add_face(len(PGON)+1)
 
-                    else:
-                        face_vertices[0] = TEVE.new_teve(
-                            "%.4f" % face.loops[0].vert.co[0],
-                            "%.4f" % face.loops[0].vert.co[1],
-                            "%.4f" % face.loops[0].vert.co[2],
-                            "%.4f" % face.loops[0][uv_layer].uv[0],
-                            "%.4f" % face.loops[0][uv_layer].uv[1],
-                            loop.vert.index
-                        )  
-                        
-                        edge, existing_edge = EDGE.new_edge(face_vertices[n_loop], face_vertices[0], smooth,  loop.edge.index, loop.edge) 
-                        face_edges[loop.edge.index] = edge
-                        if existing_edge:
-                            edge = existing_edge
-                        edge.add_face(len(PGON)+1)
+            
+            if use_vect:
+                VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
+                VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
+                VECT_LIST.append(VECT)
+            
+            pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
+            #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
+            for edge in face_edges.values():
+                pgon_str += str(edge) + ", "
 
-                
-                if use_vect:
-                    VECT_ID += 1 # starts at 0 in python, but at 1 in gdl. so it's ok to let it here
-                    VECT = f"VECT %.5f, %.5f, %.5f" % (face.normal[0], face.normal[1] ,face.normal[2])
-                    VECT_LIST.append(VECT)
-                
-                pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
-                #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
-                for edge in face_edges.values():
-                    pgon_str += str(edge) + ", "
-
-                # depending on the face material, tell this pgon to go in specific list
-                PGON.append(pgon_str[:-2])
+            # depending on the face material, tell this pgon to go in specific list
+            PGON.append(pgon_str[:-2])
 
         TEVE_LIST = TEVE.get_output()
         EDGE_LIST = EDGE.get_output()
