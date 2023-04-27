@@ -321,6 +321,28 @@ class OBJET(METACLASS):
         data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{len(self.GDLPict)}" path="{texture.path}"/>'''
         self.GDLPict.append(ET.fromstring(data))
 
+    @staticmethod
+    def check_CDATA(section):
+        '''Vérifie que toutes les sections qui doivent avoir du CDATA en aient.'''
+        # une section CDATA
+        # if section.text in ["\n\n"]:
+        x = 1
+        if section.tag in ["MName", "Description", "Script_3D", "Script_2D", "Script_1D", "Script_PR", "Script_UI", "Script_VL", "Script_FWM", "Script_BWM", "Keywords", "Comment"]:
+            Ctext = CDATA(section.text)
+            section.text = None
+            section.append(Ctext)
+            return section
+
+        else:
+            subsection_list = [subsection for subsection in section]
+            for subsection in section:
+                new_section = OBJET.check_CDATA(subsection)
+                section.insert(subsection_list.index(subsection), new_section)
+                section.remove(subsection)
+            return section
+
+
+
     def compile_xml(self):
         attributes = [attr for attr in dir(self) if attr in self.sections_list + ["GDLPict", "Script_1D"]]                
                 
@@ -337,23 +359,11 @@ class OBJET(METACLASS):
             # Si la section est une liste, ajouter chaque élément de la liste à l'arbre
             if isinstance(getattr(self, attr), list):
                 for item in getattr(self, attr):
-                    if item.tag in self.cdata_sections_list:
-                        Ctext = CDATA(item.text)
-                        item.text = None
-                        item.append(Ctext)
-                        root.append(item)
-                    else:
-                        root.append(item)
+                    root.append(OBJET.check_CDATA(item))
             # Sinon, ajouter directement la section à l'arbre
             else:
                 section = getattr(self, attr)
-                if section.tag in self.cdata_sections_list:
-                    Ctext = CDATA(section.text)
-                    section.text = None
-                    section.append(Ctext)
-                    root.append(section)
-                else:
-                    root.append(section)
+                root.append(OBJET.check_CDATA(section))
 
         # Ajouter l'élément racine à l'arbre
         tree._setroot(root)
