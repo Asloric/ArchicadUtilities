@@ -1,6 +1,9 @@
 import xml.etree.ElementTree as ET
 import xml.sax.saxutils as su
 import os
+import shutil
+import re
+
 
 xml_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces XML'
 xml_attribute_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces XML attribute'
@@ -42,6 +45,45 @@ def _serialize_xml(write, elem, qnames, namespaces,short_empty_elements, **kwarg
 
 ET._serialize_xml = ET._serialize['xml'] = _serialize_xml
 
+def cleanString(incomingString):
+    newstring = incomingString
+    newstring = newstring.replace("!","")
+    newstring = newstring.replace("@","")
+    newstring = newstring.replace("#","")
+    newstring = newstring.replace("$","")
+    newstring = newstring.replace("%","")
+    newstring = newstring.replace("^","")
+    newstring = newstring.replace("&","and")
+    newstring = newstring.replace("*","")
+    newstring = newstring.replace("(","")
+    newstring = newstring.replace(")","")
+    newstring = newstring.replace("+","")
+    newstring = newstring.replace("=","")
+    newstring = newstring.replace("?","")
+    newstring = newstring.replace("\'","")
+    newstring = newstring.replace("\"","")
+    newstring = newstring.replace("{","")
+    newstring = newstring.replace("}","")
+    newstring = newstring.replace("[","")
+    newstring = newstring.replace("]","")
+    newstring = newstring.replace("<","")
+    newstring = newstring.replace(">","")
+    newstring = newstring.replace("~","")
+    newstring = newstring.replace("`","")
+    newstring = newstring.replace(":","")
+    newstring = newstring.replace(";","")
+    newstring = newstring.replace("|","")
+    newstring = newstring.replace("\\","")
+    newstring = newstring.replace("/","")        
+    newstring = newstring.replace(".","")        
+    newstring = newstring.replace(" ","_")        
+    newstring = newstring.replace("é","e")        
+    newstring = newstring.replace("è","e")        
+    newstring = newstring.replace("à","a")        
+    if len(newstring) > 28:
+        return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}*
+    return newstring
+    
 
 #============================================================================================================================================
 #============================================================================================================================================
@@ -86,12 +128,6 @@ class SURFACES(METACLASS):
             
                 surface_instance.find_textures()
                 
-                
-    def print(self):
-        print(self.name)
-        for attr in dir(self):
-            if not callable(getattr(self, attr)) and not "__" in attr:
-                print("    " + attr) #, type(getattr(self, attr)))
 
     def find_textures(self):
         #if hasattr(self, "Picture"):  # Pas utile pour la compilation des textures dans les objets.
@@ -118,19 +154,23 @@ class SURFACES(METACLASS):
                     self.textures[texture_file_name] = texture_file
 
     
-    def get_script_1d(self, new_material_name=None):
+    def get_script_1d(self, material_name=None, new_material_index=None, custom_script=None):
         script = []
-        lines = self.Script_1D.text.split("\n")
+        if custom_script is not None:
+            lines = custom_script
+        else:
+            lines = self.Script_1D.text.split("\n")
         for line in lines:
             if line.startswith("call "):
                 pass
             else:
-                if new_material_name:
-                    if line.startswith("define material "):
-                        line_parts = line.split('"')
-                        line_parts[1] = new_material_name
-                        new_line = line_parts[0] + '"' + line_parts[1] + '"' + line_parts[2]
+                if material_name and new_material_index and material_name in line:
+                    if line.startswith("define texture "):
+                        to_replace = "`" + material_name + "`"
+                        new_line  = line.replace(to_replace, str(new_material_index))
                         script.append(new_line)
+                    elif line.startswith("file_dependence "):
+                        pass
                     else:
                         script.append(line)
                 else:
@@ -235,12 +275,6 @@ class OBJET(METACLASS):
 
                 objet_instance.find_textures()
 
-    def print(self):
-        print(self.name)
-        for attr in dir(self):
-            if not callable(getattr(self, attr)) and not "__" in attr:
-                print("    " + attr) #, type(getattr(self, attr)))
-
     def find_textures(self):
         '''Trouve toutes les textures intégrées à l'objet, et les répertorie dans les attribut de l'instance'''
         # lis la section picture
@@ -261,7 +295,6 @@ class OBJET(METACLASS):
             # trouve la texture
             for GDLPict in GDLPict_list:
                 path = GDLPict.get("path")
-            
         
             # trouve le dossier texture à partir de ça
             # sauvegarde la texture, et le dossier dans les attributs de l'instance
@@ -283,12 +316,17 @@ class OBJET(METACLASS):
             # Récupère le script 1d de la surface à laquelle le matériau est lié
             if surface_attribute := SURFACES_ATTRIBUTE.instances.get(int(material_index)):
                 if surface_instance := surface_attribute.surface:
-                    script_1d_materials += surface_instance.get_script_1d(material_name) # La fonction remplace le nom si un autre nom lui est donné.
                     # Renome l'ancien paramètre pour le moment afin qu'il ne gène pas. Il n'a plus aucun effet, mais on le garde pour plus tard.
                     material.set("Name", "_old_" + material_name)
-                    
+                    curent_script = [] # a temp list to hold the 1d script while working on it.
+
                     for texture_name, texture in surface_instance.textures.items():
-                        self.add_gdlpict(texture)
+                        image_index = self.add_gdlpict(texture)
+                        if image_index:
+                            curent_script = surface_instance.get_script_1d(texture_name, image_index, custom_script=curent_script if len(curent_script) > 0 else None) # La fonction remplace le nom si un autre nom lui est donné.
+
+                    script_1d_materials += curent_script
+
                 else:
                     super().debug((f"Surface introuvable pour le surface_attribute {surface_attribute.name}"), 1)
 
@@ -303,7 +341,7 @@ class OBJET(METACLASS):
         
         # Ajoute une ligne pour afficher la représentation 2D de l'objet sinon il ne l'affiche pas.
         if not "FRAGMENT2 ALL, 0" in script_1d_objet and len(script_1d_materials):
-            script_1d_materials += "FRAGMENT2 ALL, 0"
+            script_1d_materials += ["FRAGMENT2 ALL, 0"]
         
         # Recompile les scripts en un string.
         self.Script_1D.text =  (script_1d_objet.text if script_1d_objet.text else "")+"\n".join(script_1d_materials if script_1d_materials else "")
@@ -320,9 +358,25 @@ class OBJET(METACLASS):
         ext = texture.name.split(".")[-1]
         if not hasattr(self, "GDLPict"):
             setattr(self, "GDLPict", [])
-        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{len(self.GDLPict)+1}" path="{texture.path}"/>'''
-        section = ET.fromstring(data)
-        self.GDLPict.append(section)
+        image_index = len(self.GDLPict)+1
+        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{image_index}" path="{self.relative_path + os.sep + self.name + os.sep + texture.name}"/>'''
+        try:
+            section = ET.fromstring(data)
+            self.GDLPict.append(section)
+        except:
+            super().debug(f"could not create texture {texture.name} for object {self.name}. probably due to name issue.", 2)
+
+        # Copie la texture dans le bon dossier.
+        original_texture_path = texture.path
+        path = output_folder + self.relative_path + os.sep + self.name + os.sep
+
+        # créé le dossier si nécessaire
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        shutil.copy2(original_texture_path, path)
+
+        return image_index
 
     @staticmethod
     def check_CDATA(section):
@@ -399,10 +453,12 @@ OBJET.load_files(objet_xml_folder, objet_xml_folder)
 
 
 # Combine les surfaces dans l'objet.
-for objet in OBJET.instances.values():
-    objet.merge_materials()
+# for objet in OBJET.instances.values():
+#     objet.merge_materials()
+#     objet.compile_xml()
 
 objet = list(OBJET.instances.values())[1]
+objet.merge_materials()
 objet.compile_xml()
 
 
