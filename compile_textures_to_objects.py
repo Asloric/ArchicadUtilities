@@ -8,31 +8,45 @@ gsm_texture_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Obj
 cached_texture_folder = {}
 objet_xml_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\objets XML'
 output_folder = 'C:\\Users\\Asloric\\Desktop\\'
-warning_level = 3
+warning_level = 3 # 0 = info, 1 = warning, 2 = error, 3=silence.
 
 #============================================================================================================================================
 #============================================================================================================================================
 #============================================================================================================================================
+
+# Cette partie permet de remplacer le serialiseur xml afin de conserver le "CDATA" dans la sortie.
 
 def CDATA(text=None):
     element = ET.Element('![CDATA[')
     element.text = text
     return element
 
-
-
 ET._original_serialize_xml = ET._serialize_xml
 
 def _serialize_xml(write, elem, qnames, namespaces,short_empty_elements, **kwargs):
+    if elem.text is not None:
+        next_indent_level = elem.text.count("\t")
+    else:
+        next_indent_level = 0
 
     if elem.tag == '![CDATA[':
-        write("\n<{}{}]]>\n".format(elem.tag, elem.text))
+        write("<{}{}]]>".format(elem.tag, elem.text))
         if elem.tail:
-            write(_escape_cdata(elem.tail))
+            write(ET._escape_cdata(elem.tail))
+        else:
+            current_indent_level = kwargs.get("current_indent_level")
+            elem.tail = '\t' * (current_indent_level if current_indent_level else 0)
+            write(ET._escape_cdata(elem.tail))
     else:
-        return ET._original_serialize_xml(write, elem, qnames, namespaces,short_empty_elements, **kwargs)
+        return ET._original_serialize_xml(write, elem, qnames, namespaces,short_empty_elements, current_indent_level=next_indent_level, **kwargs)
 
 ET._serialize_xml = ET._serialize['xml'] = _serialize_xml
+
+
+#============================================================================================================================================
+#============================================================================================================================================
+#============================================================================================================================================
+
 
 class METACLASS():
 
@@ -42,6 +56,11 @@ class METACLASS():
         if level >= warning_level:
             infos = ''.join(str(t) for t in text)
             print(info_level[level], infos)
+
+#============================================================================================================================================
+#============================================================================================================================================
+#============================================================================================================================================
+
 
 class SURFACES(METACLASS):
     '''Informations de représentation des surfaces dans les scripts. Script_1D compatible avec objets.'''
@@ -285,41 +304,25 @@ class OBJET(METACLASS):
         # Ajoute une ligne pour afficher la représentation 2D de l'objet sinon il ne l'affiche pas.
         if not "FRAGMENT2 ALL, 0" in script_1d_objet and len(script_1d_materials):
             script_1d_materials += "FRAGMENT2 ALL, 0"
-            
+        
         # Recompile les scripts en un string.
-        self.set_script_1d(script_1d_objet + script_1d_materials)    
+        self.Script_1D.text =  (script_1d_objet.text if script_1d_objet.text else "")+"\n".join(script_1d_materials if script_1d_materials else "")
 
     def get_script_1d(self):
         if not hasattr(self, "Script_1D"):
-            data = '''<Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[]]>
-</Script_1D>'''  
+            data = '''<Script_1D SectVersion="20" SectionFlags="0" SubIdent="0"><![CDATA[]]></Script_1D>'''  
             self.Script_1D = ET.fromstring(data)
             super().debug((f"Script_1D manquant dans objet {self.name}"), 0)
-        script = []
-        lines = self.Script_1D.text.split("\n")
-        for line in lines:
-            if line.startswith("<![CDATA["):
-                script.append(line.replace("<![CDATA[", ""))
-            elif line.endswith("]]>"):
-                script.append(line.replace("]]>", ""))
-            else:
-                script.append(line)
-        
-        return script
-
-    def set_script_1d(self, script):
-        script_str = "<![CDATA[\n"
-        for line in script:
-            script_str += line + "\n"
-        script_str += "]]>\n"
+        return self.Script_1D
+            
 
     def add_gdlpict(self, texture):
         ext = texture.name.split(".")[-1]
         if not hasattr(self, "GDLPict"):
             setattr(self, "GDLPict", [])
-        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{len(self.GDLPict)}" path="{texture.path}"/>'''
-        self.GDLPict.append(ET.fromstring(data))
+        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{len(self.GDLPict)+1}" path="{texture.path}"/>'''
+        section = ET.fromstring(data)
+        self.GDLPict.append(section)
 
     @staticmethod
     def check_CDATA(section):
@@ -376,7 +379,7 @@ class OBJET(METACLASS):
 
         # Enregistrer l'arbre dans un fichier XML
         tree.write(file_path, encoding="utf-8", xml_declaration=True)
-
+        
 
 # ================================================================================================================
 # ================================================================================================================
@@ -399,7 +402,7 @@ OBJET.load_files(objet_xml_folder, objet_xml_folder)
 for objet in OBJET.instances.values():
     objet.merge_materials()
 
-objet = list(OBJET.instances.values())[0]
+objet = list(OBJET.instances.values())[1]
 objet.compile_xml()
 
 
