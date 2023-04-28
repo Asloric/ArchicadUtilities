@@ -10,7 +10,7 @@ xml_attribute_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\O
 gsm_texture_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces GSM\\[TImg] Textures'
 cached_texture_folder = {}
 objet_xml_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\objets XML'
-output_folder = 'C:\\Users\\Asloric\\Desktop\\'
+output_folder = 'C:\\Users\\Asloric\\Desktop\\tests\\objets XML\\'
 warning_level = 3 # 0 = info, 1 = warning, 2 = error, 3=silence.
 
 #============================================================================================================================================
@@ -156,6 +156,7 @@ class SURFACES(METACLASS):
     
     def get_script_1d(self, material_name=None, new_material_index=None, custom_script=None):
         script = []
+        found_texture_names = []
         if custom_script is not None:
             lines = custom_script
         else:
@@ -165,14 +166,18 @@ class SURFACES(METACLASS):
                 pass
             else:
                 if material_name and new_material_index and material_name in line:
-                    if line.startswith("define texture "):
-                        to_replace = "`" + material_name + "`"
-                        new_line  = line.replace(to_replace, str(new_material_index))
-                        script.append(new_line)
-                    elif line.startswith("file_dependence "):
+                    # if line.lower().startswith("define texture") or line.lower().startswith("define material") :
+                    #     line_parts = line.split(material_name)
+                    #     separator = '"' if type(new_material_index) is str else ""
+                    #     new_line = line_parts[0][:-1] + separator  + str(new_material_index)  + separator + line_parts[1][1:]
+                    #     script.append(new_line)
+                    if line.startswith("file_dependence"):
                         pass
                     else:
-                        script.append(line)
+                        line_parts = line.split(material_name)
+                        separator = '"' if type(new_material_index) is str else ""
+                        new_line = line_parts[0][:-1] + separator  + str(new_material_index)  + separator + line_parts[1][1:]
+                        script.append(new_line)
                 else:
                     script.append(line)
         
@@ -321,15 +326,16 @@ class OBJET(METACLASS):
         
         param = self.ParamSection.find("Parameters")
         for material in param.findall("Material"):
-            material_name = material.get("Name")
+            parameter_material_name = material.get("Name")
             material_index = material.find("Value").text
     
             # Récupère le script 1d de la surface à laquelle le matériau est lié
             if surface_attribute := SURFACES_ATTRIBUTE.instances.get(int(material_index)):
                 if surface_instance := surface_attribute.surface:
                     # Renome l'ancien paramètre pour le moment afin qu'il ne gène pas. Il n'a plus aucun effet, mais on le garde pour plus tard.
-                    material.set("Name", "_old_" + material_name)
-                    curent_script = [] # a temp list to hold the 1d script while working on it.
+                    material.set("Name", "_old_" + parameter_material_name)
+                    curent_script = surface_instance.get_script_1d(surface_instance.name, parameter_material_name)
+                    curent_script = surface_instance.get_script_1d("Texture1", "texture_" + surface_instance.name, custom_script=curent_script)
 
                     for texture_name, texture in surface_instance.textures.items():
                         image_index = self.add_gdlpict(texture)
@@ -344,7 +350,7 @@ class OBJET(METACLASS):
             else:
                 if not material_index in OBJET.unknown_materials:
                     OBJET.unknown_materials.append(material_index)
-                super().debug((f"Matériau {material_name} avec index {material_index} non trouvé dans l'objet {self.name}"), 2)
+                super().debug((f"Matériau {parameter_material_name} avec index {material_index} non trouvé dans l'objet {self.name}"), 2)
                 
         
         # récupère le Script_1D de l'objet
@@ -465,13 +471,13 @@ OBJET.load_files(objet_xml_folder, objet_xml_folder)
 
 
 # Combine les surfaces dans l'objet.
-# for objet in OBJET.instances.values():
-#     objet.merge_materials()
-#     objet.compile_xml()
+for objet in OBJET.instances.values():
+    objet.merge_materials()
+    objet.compile_xml()
 
-objet = list(OBJET.instances.values())[1]
-objet.merge_materials()
-objet.compile_xml()
+# objet = list(OBJET.instances.values())[1]
+# objet.merge_materials()
+# objet.compile_xml()
 
 
 # cleanup
