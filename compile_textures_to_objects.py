@@ -281,7 +281,18 @@ class OBJET(METACLASS):
         if hasattr(self, "Picture"):
         # récupere le path de la preview
             self.preview = self.Picture.get("path")
-        
+
+            if self.preview:
+                # Copie la texture dans le bon dossier.
+                original_texture_path = objet_xml_folder + os.sep + self.preview
+                path = output_folder + self.relative_path + os.sep + self.name + os.sep
+
+                # créé le dossier si nécessaire
+                if not os.path.exists(path):
+                    os.makedirs(path)
+
+                shutil.copy2(original_texture_path, path)
+                
         
         if hasattr(self, "GDLPict"):
             # Assure de toujours avoir le meme format.
@@ -359,7 +370,8 @@ class OBJET(METACLASS):
         if not hasattr(self, "GDLPict"):
             setattr(self, "GDLPict", [])
         image_index = len(self.GDLPict)+1
-        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{image_index}" path="{self.relative_path + os.sep + self.name + os.sep + texture.name}"/>'''
+        texture_path = str(self.relative_path + "/" + self.name + "/" + texture.name).replace("\\", '/')
+        data = f'''<GDLPict MIME="image/{ext}" SectVersion="19" SectionFlags="0" SubIdent="{image_index}" path="{texture_path}"/>'''
         try:
             section = ET.fromstring(data)
             self.GDLPict.append(section)
