@@ -88,9 +88,9 @@ set fill fillAttribute_1
 <![CDATA[
 ADDZ {shift_z}
 !ROTZ 180
-MULX A*{1/bound_x}
-MULY B*{1/bound_y}
-MULZ ZZYZX*{1/bound_z}
+MULX A*{(1/bound_x) if bound_x else 0}
+MULY B*{(1/bound_y) if bound_y else 0}
+MULZ ZZYZX*{(1/bound_z) if bound_z else 0}
 {gdl_script}
 EXIT ZZYZX, A, B
 ]]>
