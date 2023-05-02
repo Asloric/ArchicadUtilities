@@ -137,7 +137,7 @@ class SURFACES(METACLASS):
         # Lis le script_1D et cherche les lignes file_dependance.
         script_1d = self.Script_1D.text.split("\n") # Créé une liste 
         for line in script_1d:
-            if line.startswith("file_dependence"):
+            if line.startswith("file_dependence") or "define texture" in line:
                 texture_file_name = line.split("`")[1] # trouve le nom de la texture en assumant qu'il y ai qu'une seule texture par ligne.
                 # ATTENTION!!!!  le character ` utilisé dans le xml n'est pas un 4 mais un altgr + 7
                 # Check dans le dossier textures si il y a un fichier de ce nom
@@ -154,7 +154,7 @@ class SURFACES(METACLASS):
                     self.textures[texture_file_name] = texture_file
 
     
-    def get_script_1d(self, material_name=None, new_material_index=None, custom_script=None):
+    def get_script_1d(self, material_name=None, new_material_index=None, custom_script=None, is_texture=False, is_material=False):
         script = []
         found_texture_names = []
         if custom_script is not None:
@@ -166,21 +166,32 @@ class SURFACES(METACLASS):
                 pass
             else:
                 if material_name and new_material_index and material_name in line:
-                    # if line.lower().startswith("define texture") or line.lower().startswith("define material") :
-                    #     line_parts = line.split(material_name)
-                    #     separator = '"' if type(new_material_index) is str else ""
-                    #     new_line = line_parts[0][:-1] + separator  + str(new_material_index)  + separator + line_parts[1][1:]
-                    #     script.append(new_line)
-                    if line.startswith("file_dependence"):
+                    line_lower = line.lower()
+                    if line_lower.startswith("file_dependence"):
                         pass
                     else:
-                        line_parts = line.split(material_name)
+                        if is_texture and "define texture" in line_lower:
+                            
+                            line_parts = line.rsplit(material_name, 1)
+                        else:
+                            if is_texture and "ind(texture" in line_lower:
+                                script.append(line)
+                                continue
+                            else:
+                                if is_material and not "define material" in line_lower:
+                                    script.append(line)
+                                    continue
+                                else:
+                                    line_parts = line.split(material_name, 1)
+
                         separator = '"' if type(new_material_index) is str else ""
                         new_line = line_parts[0][:-1] + separator  + str(new_material_index)  + separator + line_parts[1][1:]
                         script.append(new_line)
+
+
                 else:
                     script.append(line)
-        
+
         return script
     
 #============================================================================================================================================
@@ -334,13 +345,16 @@ class OBJET(METACLASS):
                 if surface_instance := surface_attribute.surface:
                     # Renome l'ancien paramètre pour le moment afin qu'il ne gène pas. Il n'a plus aucun effet, mais on le garde pour plus tard.
                     material.set("Name", "_old_" + parameter_material_name)
-                    curent_script = surface_instance.get_script_1d(surface_instance.name, parameter_material_name)
-                    curent_script = surface_instance.get_script_1d("Texture1", "texture_" + surface_instance.name, custom_script=curent_script)
+                    curent_script = surface_instance.get_script_1d(surface_instance.name, parameter_material_name, is_texture=False, is_material=True)
+
+                    curent_script.append(f'{parameter_material_name} = IND(MATERIAL, "{parameter_material_name}")')
+
+                    curent_script = surface_instance.get_script_1d("Texture1", "texture_" + surface_instance.name, custom_script=curent_script, is_texture=False, is_material=False)
 
                     for texture_name, texture in surface_instance.textures.items():
                         image_index = self.add_gdlpict(texture)
                         if image_index:
-                            curent_script = surface_instance.get_script_1d(texture_name, image_index, custom_script=curent_script if len(curent_script) > 0 else None) # La fonction remplace le nom si un autre nom lui est donné.
+                            curent_script = surface_instance.get_script_1d(texture_name, image_index, custom_script=curent_script if len(curent_script) > 0 else None, is_texture=True, is_material=False) # La fonction remplace le nom si un autre nom lui est donné.
 
                     script_1d_materials += curent_script
 
