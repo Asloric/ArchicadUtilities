@@ -5,12 +5,12 @@ import shutil
 import re
 
 
-xml_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces XML'
-xml_attribute_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces XML attribute'
-gsm_texture_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\surfaces GSM\\[TImg] Textures'
+xml_folder = '\\surfaces XML'
+xml_attribute_folder = '\\surfaces XML attribute'
+gsm_texture_folder = '\\surfaces GSM\\[TImg] Textures'
 cached_texture_folder = {}
-objet_xml_folder = 'E:\\Work\\Pro\\Christian FLOUR\\Bibliotheque Archicad\\Object surface converter\\objets XML'
-output_folder = 'C:\\Users\\Asloric\\Desktop\\tests\\objets XML\\'
+objet_xml_folder = '\\objets XML'
+output_folder = '\\objets XML Converted\\'
 warning_level = 3 # 0 = info, 1 = warning, 2 = error, 3=silence.
 
 #============================================================================================================================================
@@ -336,6 +336,7 @@ class OBJET(METACLASS):
         script_1d_materials = []
         
         param = self.ParamSection.find("Parameters")
+        choose_material_script = ""
         for material in param.findall("Material"):
             parameter_material_name = material.get("Name")
             material_index = material.find("Value").text
@@ -347,8 +348,15 @@ class OBJET(METACLASS):
                     material.set("Name", "_old_" + parameter_material_name)
                     curent_script = surface_instance.get_script_1d(surface_instance.name, parameter_material_name, is_texture=False, is_material=True)
 
-                    curent_script.append(f'{parameter_material_name} = IND(MATERIAL, "{parameter_material_name}")')
+                    # add a condition in the 3d script to allow material change.  Done in 3D because 1D is only executed on library load.
 
+                    choose_material_script += f'''
+IF _old_{parameter_material_name} = 0 OR _old_{parameter_material_name} = {str(material_index)} THEN
+    {parameter_material_name} = IND(MATERIAL, "{parameter_material_name}")
+ELSE
+    {parameter_material_name} = _old_{parameter_material_name}
+ENDIF
+'''
                     curent_script = surface_instance.get_script_1d("Texture1", "texture_" + surface_instance.name, custom_script=curent_script, is_texture=False, is_material=False)
 
                     for texture_name, texture in surface_instance.textures.items():
@@ -365,7 +373,7 @@ class OBJET(METACLASS):
                 if not material_index in OBJET.unknown_materials:
                     OBJET.unknown_materials.append(material_index)
                 super().debug((f"Matériau {parameter_material_name} avec index {material_index} non trouvé dans l'objet {self.name}"), 2)
-                
+        self.Script_3D.text =  choose_material_script + self.Script_3D.text
         
         # récupère le Script_1D de l'objet
         script_1d_objet = self.get_script_1d()
