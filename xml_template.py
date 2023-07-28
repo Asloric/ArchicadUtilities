@@ -17,38 +17,64 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 	for item in mesh_script:
 		gdl_script += item + "\n"
 
+
+	# Defines the attrubues parameters
+	attributes_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
+	for propattr in bpy.context.window_manager.archicad_converter_props.collection:
+		flags = ""
+		if propattr.hide_flag:
+			flags += "<ParFlg_Hidden/>\n"
+		if propattr.child_flag:
+			flags += "<ParFlg_Child/>\n"
+		if propattr.bold_flag:
+			flags += "<ParFlg_BoldName/>\n"
+		if propattr.unique_flag:
+			flags += "<ParFlg_Unique/>\n"
+
+
+		attributes_str += f"""
+		<{propattr.ac_type} Name="{propattr.identifier}">
+			<Description><![CDATA["{propattr.name}"]]></Description>
+			{f'''<Flags>
+    			{flags}
+			</Flags>''' if flags != "" else ''}
+			<Value>{eval(f"propattr.{propattr.ac_type}")}</Value>
+		</{propattr.ac_type}>
+"""
+		
 
 	parameter_surface = ""
 
 	for sf_index, surface_title in enumerate(surfaces):
-		parameter_surface += f'''
+		parameter_surface += f''''''
+# 		parameter_surface += f'''
 
-		<Boolean Name="{"ovr_" + surface_title}">
-			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
-			<Fix/>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>0</Value>
-		</Boolean>
+# 		<Boolean Name="{"ovr_" + surface_title}">
+# 			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
+# 			<Fix/>
+# 			<Flags>
+# 				<ParFlg_Child/>
+# 			</Flags>
+# 			<Value>0</Value>
+# 		</Boolean>
 
-		<Material Name="{surface_title}">
-			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>{preferences.default_surface}</Value>
-		</Material>
+# 		<Material Name="{surface_title}">
+# 			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
+# 			<Flags>
+# 				<ParFlg_Child/>
+# 			</Flags>
+# 			<Value>{preferences.default_surface}</Value>
+# 		</Material>
 
-		<BuildingMaterial Name="{materials[sf_index]}">
-			<Description><![CDATA["{materials[sf_index]}"]]></Description>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>{preferences.default_material}</Value>
-		</BuildingMaterial>
-'''
+# 		<BuildingMaterial Name="{materials[sf_index]}">
+# 			<Description><![CDATA["{materials[sf_index]}"]]></Description>
+# 			<Flags>
+# 				<ParFlg_Child/>
+# 			</Flags>
+# 			<Value>{preferences.default_material}</Value>
+# 		</BuildingMaterial>
+# '''
 
 
 	if thumbnail_path:
@@ -152,50 +178,8 @@ EXIT ZZYZX, A, B
 			<Value>0</Value>
 		</Length>
 
-
-		<!-- PEN_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
-
-		<Title Name="PEN_TITLE">
-			<Description><![CDATA["STYLOS"]]></Description>
-		</Title>
-		<PenColor Name="penAttribute_1">
-			<Description><![CDATA["Stylo 1"]]></Description>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>{preferences.default_pen}</Value>
-		</PenColor>
-
-
-		<!-- LINETYPE_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
-
-		<Title Name="LINETYPE_TITLE">
-			<Description><![CDATA["LIGNES"]]></Description>
-		</Title>
-		<LineType Name="lineTypeAttribute_1">
-			<Description><![CDATA["Ligne 1"]]></Description>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>{preferences.default_line}</Value>
-		</LineType>
-
-		<Title Name="HATCHTYPE_TITLE">
-			<Description><![CDATA["HACHURES"]]></Description>
-		</Title>
-
-		<LineType Name="fillAttribute_1">
-			<Description><![CDATA["Fond"]]></Description>
-			<Flags>
-				<ParFlg_Child/>
-			</Flags>
-			<Value>{preferences.default_hatch}</Value>
-		</LineType>
-
-
-
-		<!-- MATERIAL_TITLE: PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK ===== PARAMETER BLOCK -->
-
+		{attributes_str}
+		
 		<Title Name="SURFACE_TITLE">
 			<Description><![CDATA["SURFACES"]]></Description>
 		</Title>

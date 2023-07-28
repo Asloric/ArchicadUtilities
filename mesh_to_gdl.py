@@ -1,49 +1,7 @@
 import bpy
 import bmesh
 from math import *
-from .import local_dict
-
-def cleanString(incomingString):
-    newstring = incomingString
-    newstring = newstring.replace("!","")
-    newstring = newstring.replace("@","")
-    newstring = newstring.replace("#","")
-    newstring = newstring.replace("$","")
-    newstring = newstring.replace("%","")
-    newstring = newstring.replace("^","")
-    newstring = newstring.replace("&","and")
-    newstring = newstring.replace("*","")
-    newstring = newstring.replace("(","")
-    newstring = newstring.replace(")","")
-    newstring = newstring.replace("+","")
-    newstring = newstring.replace("=","")
-    newstring = newstring.replace("?","")
-    newstring = newstring.replace("\'","")
-    newstring = newstring.replace("\"","")
-    newstring = newstring.replace("{","")
-    newstring = newstring.replace("}","")
-    newstring = newstring.replace("[","")
-    newstring = newstring.replace("]","")
-    newstring = newstring.replace("<","")
-    newstring = newstring.replace(">","")
-    newstring = newstring.replace("~","")
-    newstring = newstring.replace("`","")
-    newstring = newstring.replace(":","")
-    newstring = newstring.replace(";","")
-    newstring = newstring.replace("|","")
-    newstring = newstring.replace("\\","")
-    newstring = newstring.replace("/","")        
-    newstring = newstring.replace(".","")        
-    newstring = newstring.replace(" ","_")        
-    newstring = newstring.replace("é","e")        
-    newstring = newstring.replace("è","e")        
-    newstring = newstring.replace("à","a")        
-    if len(newstring) > 28:
-        return newstring[0:28] # max archicad lenght is 36. minus the ovr_sf_{mat_name}*
-    else:
-        if newstring.upper() in local_dict.gdl_keywords:
-            return "bl_" + newstring
-        return newstring
+from . import utils
 
 
 class TEVE():
@@ -165,7 +123,7 @@ class EDGE():
     @classmethod
     def get_output(cls):
         output_list = [
-            f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {(2 if edge.smooth else 262144) if edge.f2 and edge.f1 else 0}   !#{edge.index}"
+            f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {1}   !#{edge.index}"
             for edge in cls.instances
         ]
         return output_list
@@ -188,6 +146,7 @@ MATERIAL_ASSIGN = []
 TEXTURE = []
 Textures_ids = {}
 converted_materials = []
+material_cache = {}
 face_id_bl2ac = {}
 
 def compare_verts_x_y_z(vert, previous_vert):
@@ -207,8 +166,10 @@ def set_materials(ob, save_directory):
     global TEXTURE
     global Textures_ids
     global converted_materials
+    global material_cache
 
     for mat_index, mat_slot in enumerate(ob.material_slots):
+        material_exists = False
         # Prevents invalid and duplicated materials
         if mat_slot.material and not mat_slot.material.name in converted_materials:
             converted_materials.append(mat_slot.material.name)
@@ -216,18 +177,18 @@ def set_materials(ob, save_directory):
             PGON.append([])
             texture_name = None
             principled_node = None
-            mat_name = cleanString(mat_slot.material.name)
+            mat_name = utils.cleanString(mat_slot.material.name)
 
             # Retrieve the diffuse texture
-            for node in mat_slot.material.node_tree.nodes:
-                if node.type == "BSDF_PRINCIPLED":
-                    principled_node = node
-                    for node_links in principled_node.inputs[0].links:
-                        texture_node = node_links.from_node
-                        if texture_node.image:
-                            texture_name = texture_node.image.name
-                            break
-
+            if mat_slot.material.node_tree:
+                for node in mat_slot.material.node_tree.nodes:
+                    if node.type == "BSDF_PRINCIPLED":
+                        principled_node = node
+                        for node_links in principled_node.inputs[0].links:
+                            texture_node = node_links.from_node
+                            if texture_node.image:
+                                texture_name = texture_node.image.name
+                                break
             
             # Save image to folder
             if texture_name:
@@ -241,7 +202,6 @@ def set_materials(ob, save_directory):
                     TEXTURE.append(f'DEFINE TEXTURE "{texture_name}" {len(Textures_ids) + 1} , 1, 1, 1, 0')
                     Textures_ids[len(Textures_ids) + 1] = f"{texture_name}.png"
                 MATERIAL.append(f'''
-r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
 DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IND(TEXTURE, "{texture_name}" )
                     ''')
             elif principled_node:
@@ -251,42 +211,50 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 emission = principled_node.inputs[19].default_value
                 emission_str = principled_node.inputs[20].default_value
                 MATERIAL.append(f'''
-r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", sf_{mat_name})
 DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
                     ''')
 
             else:
-                MATERIAL.append(f'''
-DEFINE MATERIAL "material_{mat_name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-!bms_{mat_name} = 0
-r = REQUEST{'{2}'} ("Building_Material_info", {mat_name}, "gs_bmat_surface", {mat_name})
-                    ''')
+                rgb = None
+                if hasattr(mat_slot.material, "diffuse_color"):
+                    rgb = mat_slot.material.diffuse_color[:-1]
+                    for name, values in material_cache.items():
+                        if rgb == values:
+                            mat_name = name
+                            material_exists = True
+                            rgb = False
+                    if not material_exists:
+                        material_cache[mat_slot.material.name] = mat_slot.material.diffuse_color[:-1]
+
+                if rgb is not None:
+                    if rgb:
+                        MATERIAL.append(f'''
+    DEFINE MATERIAL "material_{mat_name}" 0, {rgb[0]}, {rgb[1]}, {rgb[2]}, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+                        ''')
+                    else:
+                         MATERIAL.append('')
+                else:
+                    MATERIAL.append(f'''
+    DEFINE MATERIAL "material_{mat_name}" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+                        ''')
             
             MATERIAL_ASSIGN.append(f'''
 BASE
-SET building_material {mat_name}, DEFAULT, DEFAULT
-IF not(ovr_sf_{mat_name}) then
-    SET MATERIAL "material_{mat_name}"
-ELSE
-    SET MATERIAL sf_{mat_name}
-ENDIF
+SET MATERIAL "material_{mat_name}"
                 ''')
 
     if not len(MATERIAL):
         MATERIAL.append(f'''
 DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-!bms_material_default = 0
-r = REQUEST{'{2}'} ("Building_Material_info", material_default, "gs_bmat_surface", material_default)
         ''')
         
         MATERIAL_ASSIGN.append(f'''
 BASE
 SET building_material material_default, DEFAULT, DEFAULT
-IF not(ovr_sf_material_default) then
-    SET MATERIAL "material_default"
-ELSE
-    SET MATERIAL sf_material_default
-ENDIF
+SET MATERIAL "material_default"
+
         ''')
         PGON.append([])
 
@@ -302,6 +270,7 @@ def run_script(smooth_angle, save_directory):
     global converted_materials
     global face_id_bl2ac
     global Textures_ids
+    global material_cache
     #Clear list
     converted_materials = []
 
@@ -391,8 +360,14 @@ def run_script(smooth_angle, save_directory):
             
             pgon_str = f"PGON {str(len(face.edges))}, {VECT_ID if use_vect else 0}, 2, "
             #pgon_str = f"PGON {str(len(face.edges))}, 0, 2, "
+            str_counter = 0
             for edge in face_edges.values():
-                pgon_str += str(edge) + ", "
+                str_edge = str(edge)
+                str_counter += len(str_edge) + 2
+                if str_counter >= 240:
+                    pgon_str += "\n"
+                    str_counter = 0
+                pgon_str += str_edge + ", "
 
             # depending on the face material, tell this pgon to go in specific list
             PGON.append(pgon_str[:-2])
@@ -419,5 +394,6 @@ def run_script(smooth_angle, save_directory):
     Textures_ids = {}
     converted_materials = []
     face_id_bl2ac = {}
+    material_cache = {}
     
     return new_file, _textures_ids, z_shift

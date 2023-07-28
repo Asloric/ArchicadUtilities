@@ -1,8 +1,6 @@
 import bpy
 
 
-
-
 def run_script(filepath):
     frame_number = str(bpy.data.scenes["Scene"].frame_current)
     frame_number = "0" * (4 - (len(frame_number))) + frame_number

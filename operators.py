@@ -3,6 +3,7 @@ import subprocess
 import os
 from time import time
 import shutil
+from . import properties, utils
 
 def create_thumbnail(object, object_name, save_path):
     preferences = bpy.context.preferences.addons[__package__].preferences
@@ -55,24 +56,6 @@ def create_thumbnail(object, object_name, save_path):
 
     render_scene.collection.objects.unlink(object)
     bpy.context.window.scene = current_scene
-        
-class export_properties(bpy.types.PropertyGroup):
-
-    object_name: bpy.props.StringProperty(name="Object name", default="")
-    is_placable: bpy.props.BoolProperty(default=True, description="Will the object be viewable in search popup")
-    smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE", description="Below this angle, edges will be smooth if not marked as sharp.")
-    save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\")
-    export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
-    lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
-    lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
-    lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
-
-
-    def register():
-        bpy.types.Scene.acaccf = bpy.props.PointerProperty(type=export_properties)
-    
-    def unregister():
-        del bpy.types.Scene.acaccf
 
 class ACACCF_OT_apply(bpy.types.Operator):
     bl_idname = "acaccf.apply"
@@ -124,6 +107,73 @@ class ACACCF_OT_apply(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+class ACACCF_OT_Proxy_remove_doubles(bpy.types.Operator):
+    bl_idname = "acaccf.remove_doubles"
+    bl_label = "remove doubles"
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.remove_doubles()
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return{"FINISHED"}
+    
+class ACACCF_OT_Proxy_delete_loose(bpy.types.Operator):
+    bl_idname = "acaccf.delete_loose"
+    bl_label = "delete loose"
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.delete_loose()
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return{"FINISHED"}
+    
+class ACACCF_OT_Proxy_connect_coplanar(bpy.types.Operator):
+    bl_idname = "acaccf.connect_coplanar"
+    bl_label = "connect coplanar"
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        return{"FINISHED"}
+    
+
+class ACACCF_OT_apply_modifiers(bpy.types.Operator):
+    bl_idname = "acaccf.apply_modifiers"
+    bl_label = "Apply modifiers"
+    bl_description = "Apply modifiers and join objects. Mendatory step for proper export."
+
+
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.active_object.type == "MESH"
+
+    def execute(self, context):
+        
+        def apply_modifiers(obj):
+            ctx = bpy.context.copy()
+            ctx['object'] = obj
+            for _, m in enumerate(obj.modifiers):
+                try:
+                    ctx['modifier'] = m
+                    bpy.ops.object.modifier_apply(ctx, modifier=m.name)
+                except RuntimeError:
+                    print(f"Error applying {m.name} to {obj.name}, removing it instead.")
+                    obj.modifiers.remove(m)
+
+            for m in obj.modifiers:
+                obj.modifiers.remove(m)
+        
+
+        # apply modifiers on every object in the selection
+        bpy.ops.object.duplicate(linked=False)
+        object_list = context.selected_objects
+        for obj in object_list:            
+            apply_modifiers(obj)
+        return {"FINISHED"}
+
+
 class ACACCF_OT_export(bpy.types.Operator):
     bl_idname = "acaccf.export"
     bl_label = "export"
@@ -131,14 +181,16 @@ class ACACCF_OT_export(bpy.types.Operator):
     def draw(self, context):
         prop = context.scene.acaccf
         layout = self.layout
-        layout.prop(prop, "export_lod")
         layout.prop(prop, "object_name")
+        layout.prop(prop, "save_path")
+
+
+        layout.prop(prop, "export_lod")
         layout.prop(prop, "lod_0", text="Detailed" if prop.export_lod else "Model")
         if prop.export_lod:
             layout.prop(prop, "lod_1")
         layout.separator(factor=1)
-        layout.prop(prop, "save_path")
-        layout.separator(factor=1)
+
         layout.prop(prop, "smooth_angle")
         if not prop.export_lod:
             layout.prop(prop, "is_placable")
@@ -192,9 +244,9 @@ class ACACCF_OT_export(bpy.types.Operator):
             object_surfaces = []
             for material in lod.data.materials:
                 if material:
-                    if not mesh_to_gdl.cleanString(material.name) in object_materials:
-                        object_materials.append(mesh_to_gdl.cleanString(material.name))
-                        object_surfaces.append(f'sf_{mesh_to_gdl.cleanString(material.name)}')
+                    if not utils.cleanString(material.name) in object_materials:
+                        object_materials.append(utils.cleanString(material.name))
+                        object_surfaces.append(f'sf_{utils.cleanString(material.name)}')
             if not len(object_materials) > 0:
                 object_materials = ["material_default"]
                 object_surfaces = ["sf_material_default"]
@@ -293,13 +345,86 @@ class ACACCF_OT_export(bpy.types.Operator):
         if props.save_path == "C:\\" or not props.save_path:
             # Set the blender's file name as object name. 
             props.save_path = os.path.dirname(bpy.context.blend_data.filepath) + "\\"
-            
+        
+        properties.AC_PropertyGroup_props.ensure_default_props(context.window_manager.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)
+        
+class AC_OT_property_add(bpy.types.Operator):
+    bl_idname = "acaccf.property_add"
+    bl_label = "add property"
+
+    def execute(self, context):
+        prop = context.window_manager.archicad_converter_props
+        item = prop.collection.add()
+        item.name = "property_" + str(len(prop.collection))
+        prop.active_user_index = len(prop.collection) - 1
+        return {"FINISHED"}
+        bl_idname = "acaccf.export"
+    bl_label = "export"
+
+class AC_OT_property_remove(bpy.types.Operator):
+    bl_idname = "acaccf.property_remove"
+    bl_label = "add property"
+
+    @classmethod
+    def poll(cls, context):
+        prop = context.window_manager.archicad_converter_props
+        if prop.active_user_index < len(prop.collection):
+            if not prop.collection[prop.active_user_index].name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
+                return True
+
+    def execute(self, context):
+        prop = context.window_manager.archicad_converter_props
+        prop.collection.remove(prop.active_user_index)
+        if prop.active_user_index >= len(prop.collection):
+            prop.active_user_index -= 1
+        else:
+            # force the update of the prop. Needed as I rely on it to ensure some props are still here.
+            prop.active_user_index = prop.active_user_index
+        return {"FINISHED"}
+
+class AC_OT_property_up(bpy.types.Operator):
+    bl_idname = "acaccf.property_up"
+    bl_label = "up property"
+
+    @classmethod
+    def poll(cls, context):
+        prop = context.window_manager.archicad_converter_props
+        return prop.active_user_index > 0
+
+    def execute(self, context):
+        prop = context.window_manager.archicad_converter_props
+
+        prop.collection.move(prop.active_user_index, prop.active_user_index-1)
+        prop.active_user_index -= 1
+        return {"FINISHED"}
+
+class AC_OT_property_down(bpy.types.Operator):
+    bl_idname = "acaccf.property_down"
+    bl_label = "down property"
+
+    @classmethod
+    def poll(cls, context):
+        prop = context.window_manager.archicad_converter_props
+        return prop.active_user_index < len(prop.collection) - 1
+    
+    def execute(self, context):
+        prop = context.window_manager.archicad_converter_props
+        prop.collection.move(prop.active_user_index, prop.active_user_index+1)
+        prop.active_user_index += 1
+        return {"FINISHED"} 
 
 classes = [
     ACACCF_OT_export,
-    export_properties,
-    ACACCF_OT_apply
+    ACACCF_OT_apply,
+    AC_OT_property_add,
+    AC_OT_property_remove,
+    AC_OT_property_down,
+    AC_OT_property_up,
+    ACACCF_OT_apply_modifiers,
+    ACACCF_OT_Proxy_remove_doubles,
+    ACACCF_OT_Proxy_delete_loose,
+    ACACCF_OT_Proxy_connect_coplanar
 ]
 
 
