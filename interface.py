@@ -90,8 +90,8 @@ class ACACCF_PT_Properties(bpy.types.Panel):
             
 
 
-            if prop.name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
-                if prop.name == "PenAttribute_1":
+            if prop.identifier in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
+                if prop.identifier == "PenAttribute_1":
                     line = bottom_part.row()
                     line.label(text= "")
                     line.label(text= "Pen Color")
@@ -101,11 +101,11 @@ class ACACCF_PT_Properties(bpy.types.Panel):
                     line.label(text= "Line Type")
                 line = bottom_part.row()
                 line.label(text="") 
-                line.label(text=prop.identifier) 
+                line.label(text=prop.name) 
 
             else:
                 bottom_part.prop(prop, "ac_type", text="Type")
-                bottom_part.prop(prop, "identifier", text="Identifier")
+                bottom_part.prop(prop, "name", text="Name")
             
             bottom_part.prop(prop, prop.ac_type, text="Value")
 

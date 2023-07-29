@@ -357,10 +357,9 @@ class AC_OT_property_add(bpy.types.Operator):
         prop = context.window_manager.archicad_converter_props
         item = prop.collection.add()
         item.name = "property_" + str(len(prop.collection))
+        item.identifier = "property_" + str(len(prop.collection))
         prop.active_user_index = len(prop.collection) - 1
         return {"FINISHED"}
-        bl_idname = "acaccf.export"
-    bl_label = "export"
 
 class AC_OT_property_remove(bpy.types.Operator):
     bl_idname = "acaccf.property_remove"

@@ -24,25 +24,25 @@ class AC_export_properties(bpy.types.PropertyGroup):
 
 class AC_single_prop(bpy.types.PropertyGroup):
     def prop_enforce_name(self, context):
-        def avoide_duplicate(name, name_suffix):
+        def avoide_duplicate(identifier, identifier_suffix):
             # create the name, then check if it exists
-            if name_suffix > 0:
-                new_name = name + "_" + str(name_suffix)
+            if identifier_suffix > 0:
+                new_identifier = identifier + "_" + str(identifier_suffix)
             else:
-                new_name = name
+                new_identifier = identifier
 
             for item in bpy.context.window_manager.archicad_converter_props.collection:
-                if item.name == new_name and item != self:
-                    name_suffix += 1
-                    return avoide_duplicate(name, name_suffix)
+                if item.name == new_identifier and item != self:
+                    identifier_suffix += 1
+                    return avoide_duplicate(identifier, identifier_suffix)
 
-            return new_name
+            return new_identifier
         
         if len(inspect.stack()) <= 2:
             name_suffix = 0
-            new_name = utils.cleanString(self.name)
+            new_name = utils.cleanString(self.identifier)
             new_name = avoide_duplicate(new_name, name_suffix)
-            self.name = new_name
+            self.identifier = new_name
 
     identifier: bpy.props.StringProperty(name="identifier", default="PropertyAttribute", description="identifier of the property. must be unique", update=prop_enforce_name)
     name: bpy.props.StringProperty(name="name", description="name of the property")
@@ -125,9 +125,9 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 class AC_UL_props(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if item.name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
-            layout.label(text=item.name)
+            layout.label(text=item.identifier)
         else:
-            layout.prop(item, "name", emboss=False, text="")
+            layout.prop(item, "identifier", emboss=False, text="")
         layout.separator()
 
 
