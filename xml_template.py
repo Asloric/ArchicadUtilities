@@ -47,34 +47,34 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 	parameter_surface = ""
 
 	for sf_index, surface_title in enumerate(surfaces):
-		parameter_surface += f''''''
-# 		parameter_surface += f'''
+		# parameter_surface += f''''''
+		parameter_surface += f'''
 
-# 		<Boolean Name="{"ovr_" + surface_title}">
-# 			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
-# 			<Fix/>
-# 			<Flags>
-# 				<ParFlg_Child/>
-# 			</Flags>
-# 			<Value>0</Value>
-# 		</Boolean>
+		<Boolean Name="{"ovr_" + surface_title}">
+			<Description><![CDATA["Remplacer surface {materials[sf_index]}"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>0</Value>
+		</Boolean>
 
-# 		<Material Name="{surface_title}">
-# 			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
-# 			<Flags>
-# 				<ParFlg_Child/>
-# 			</Flags>
-# 			<Value>{preferences.default_surface}</Value>
-# 		</Material>
+		<Material Name="{surface_title}">
+			<Description><![CDATA["Surface {surface_title[3:]}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_surface}</Value>
+		</Material>
 
-# 		<BuildingMaterial Name="{materials[sf_index]}">
-# 			<Description><![CDATA["{materials[sf_index]}"]]></Description>
-# 			<Flags>
-# 				<ParFlg_Child/>
-# 			</Flags>
-# 			<Value>{preferences.default_material}</Value>
-# 		</BuildingMaterial>
-# '''
+		<BuildingMaterial Name="{materials[sf_index]}">
+			<Description><![CDATA["{materials[sf_index]}"]]></Description>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>{preferences.default_material}</Value>
+		</BuildingMaterial>
+'''
 
 
 	if thumbnail_path:
