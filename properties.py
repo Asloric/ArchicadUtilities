@@ -108,8 +108,8 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop = self.collection.add()
             prop.name = "fillAttribute_1"
             prop.identifier = "fillAttribute_1"
-            prop.ac_type = "LineType"
-            prop.LineType = preferences.default_hatch
+            prop.ac_type = "FillPattern"
+            prop.FillPattern = preferences.default_hatch
 
         
 
