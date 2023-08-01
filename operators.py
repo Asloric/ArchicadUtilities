@@ -23,6 +23,8 @@ def create_thumbnail(object, object_name, save_path):
     # if no camera, create one
     if not bpy.context.scene.camera:
         bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+    else:
+        bpy.context.scene.camera.rotation_euler = preferences.camera_angle
 
     # sun = False
     # for ob in bpy.context.scene.objects:
