@@ -123,7 +123,7 @@ class EDGE():
     @classmethod
     def get_output(cls):
         output_list = [
-            f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {1}   !#{edge.index}"
+            f"EDGE {edge.v1.index+1}, {edge.v2.index+1}, {edge.f1}, {edge.f2}, {(2 if edge.smooth else 262144) if edge.f2 and edge.f1 else 0}   !#{edge.index}"
             for edge in cls.instances
         ]
         return output_list
@@ -242,7 +242,11 @@ DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 
             
             MATERIAL_ASSIGN.append(f'''
 BASE
-SET MATERIAL "material_{mat_name}"
+IF sf_{mat_name} = 0 then
+    SET MATERIAL "material_{mat_name}"
+ELSE
+    SET MATERIAL sf_{mat_name}
+ENDIF
                 ''')
 
     if not len(MATERIAL):
@@ -252,9 +256,11 @@ DEFINE MATERIAL "material_default" 0, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, 0, 0, 
         
         MATERIAL_ASSIGN.append(f'''
 BASE
-SET building_material material_default, DEFAULT, DEFAULT
-SET MATERIAL "material_default"
-
+IF sf_material_default = 0 then
+    SET MATERIAL "material_default"
+ELSE
+    SET MATERIAL sf_material_default
+ENDIF
         ''')
         PGON.append([])
 
