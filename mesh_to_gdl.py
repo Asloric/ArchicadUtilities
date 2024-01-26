@@ -206,10 +206,13 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                     ''')
             elif principled_node:
                 color = principled_node.inputs[0].default_value
-                spec = principled_node.inputs[7].default_value
-                alpha = principled_node.inputs[21].default_value
-                emission = principled_node.inputs[19].default_value
-                emission_str = principled_node.inputs[20].default_value
+                ior = principled_node.inputs[3].default_value
+                alpha = principled_node.inputs[4].default_value
+                emission = principled_node.inputs[26].default_value
+                emission_str = principled_node.inputs[27].default_value
+
+                spec = ((ior-1)/(ior+1))*2/0.08
+
                 MATERIAL.append(f'''
 DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
                     ''')

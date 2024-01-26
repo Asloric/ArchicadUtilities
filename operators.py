@@ -74,15 +74,16 @@ class ACACCF_OT_apply(bpy.types.Operator):
     def execute(self, context):
         
         def apply_modifiers(obj):
-            ctx = bpy.context.copy()
-            ctx['object'] = obj
-            for _, m in enumerate(obj.modifiers):
-                try:
-                    ctx['modifier'] = m
-                    bpy.ops.object.modifier_apply(ctx, modifier=m.name)
-                except RuntimeError:
-                    print(f"Error applying {m.name} to {obj.name}, removing it instead.")
-                    obj.modifiers.remove(m)
+            # ctx = bpy.context.copy()
+            # ctx['object'] = obj
+            with context.temp_override(object = obj):
+                for _, m in enumerate(obj.modifiers):
+                    try:
+                        # with context.temp_override(modifier = m):
+                        bpy.ops.object.modifier_apply(modifier= m.name)
+                    except RuntimeError:
+                        print(f"Error applying {m.name} to {obj.name}, removing it instead.")
+                        obj.modifiers.remove(m)
 
             for m in obj.modifiers:
                 obj.modifiers.remove(m)
