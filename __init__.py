@@ -6,7 +6,7 @@ from . import interface, operators, properties
 bl_info = {
     "name": "Archicad exporter",
     "author": "Clovis Flayols",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (3, 3, 0),
     "location": "View3D > Toolshelf",
     "description": "Archicad object automatic creation. With a bit of luck.",
