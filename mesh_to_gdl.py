@@ -211,7 +211,8 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 emission = principled_node.inputs[26].default_value
                 emission_str = principled_node.inputs[27].default_value
 
-                spec = ((ior-1)/(ior+1))*2/0.08
+                iorb = (ior-1)/(ior+1)
+                spec = (iorb*iorb)/0.08
 
                 MATERIAL.append(f'''
 DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
