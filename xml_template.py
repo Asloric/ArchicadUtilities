@@ -87,6 +87,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 pen     penAttribute_1
 set line_type lineTypeAttribute_1
 set fill fillAttribute_1
+!FRAGMENT2 1, 1
 {symbol_script}
 ]]>
 </Script_2D>
