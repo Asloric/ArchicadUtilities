@@ -233,8 +233,8 @@ class ACACCF_OT_export(bpy.types.Operator):
             bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
 
             # create 2d script
-            #bpy.context.scene.render.engine = 'CYCLES'
-            #symbol_script = mesh_to_symbol.run_script(self.save_path)
+            bpy.context.scene.render.engine = 'CYCLES'
+            symbol_script = mesh_to_symbol.run_script(props.save_path)
 
             # create 3d script
             mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder)
@@ -259,7 +259,8 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 
             # complete xml
-            xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, -90, 51", mesh_script, size_x, size_y, size_z, z_shift, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
+            xml = xml_template.get_xml(props.object_name, is_placable, symbol_script, mesh_script, size_x, size_y, size_z, z_shift, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
+            # xml = xml_template.get_xml(props.object_name, is_placable, "PROJECT2{2} 3, -90, 51", mesh_script, size_x, size_y, size_z, z_shift, lod_number, Textures_ids, object_surfaces, object_materials, ac_version, thumbnail_path=thumbnail_path)
 
 
             target_filepath = props.save_path + object_name + ".xml"
@@ -416,8 +417,20 @@ class AC_OT_property_down(bpy.types.Operator):
         prop.active_user_index += 1
         return {"FINISHED"} 
 
+
+class ACCTEST_OT_dummy(bpy.types.Operator):
+    bl_idname = "acaccf.dummy"
+    bl_label = "dummy"
+
+    def execute(self, context):
+        from . import mesh_to_symbol
+
+        mesh_to_symbol.run_script("C:\\tmp\\", bpy.context.active_object)
+        return {"FINISHED"}
+
 classes = [
     ACACCF_OT_export,
+    ACCTEST_OT_dummy,
     ACACCF_OT_apply,
     AC_OT_property_add,
     AC_OT_property_remove,
