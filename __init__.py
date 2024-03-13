@@ -1,12 +1,12 @@
 import os
 import bpy
 
-from . import interface, operators
+from . import interface, operators, properties
 
 bl_info = {
     "name": "Archicad exporter",
     "author": "Clovis Flayols",
-    "version": (1, 0, 9),
+    "version": (1, 2, 1),
     "blender": (3, 3, 0),
     "location": "View3D > Toolshelf",
     "description": "Archicad object automatic creation. With a bit of luck.",
@@ -56,12 +56,14 @@ class archicad_exporter(bpy.types.AddonPreferences):
 
 def register():
     bpy.utils.register_class(archicad_exporter)
+    properties.register()
     operators.register()
     interface.register()
 
 def unregister():
     operators.unregister()
     interface.unregister()
+    properties.unregister()
     bpy.utils.unregister_class(archicad_exporter)
 
 if __name__ == "__main__":
