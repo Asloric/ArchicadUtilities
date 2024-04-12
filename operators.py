@@ -234,10 +234,11 @@ class ACACCF_OT_export(bpy.types.Operator):
 
             # create 2d script
             bpy.context.scene.render.engine = 'CYCLES'
-            symbol_script = mesh_to_symbol.run_script(props.save_path)
+            obj = bpy.context.active_object
+            symbol_script = mesh_to_symbol.run_script(props.save_path, start_obj=obj)
 
             # create 3d script
-            mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder)
+            mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder, ob = obj)
             
             #get back to object mode
             bpy.ops.object.mode_set(mode='OBJECT')

@@ -7,7 +7,7 @@ import addon_utils
     # https://blender.stackexchange.com/questions/155275/how-to-set-freestyle-line-set-setting-using-python
 
 
-def run_script(filepath, obj:bpy.types.Object):
+def run_script(filepath, start_obj:bpy.types.Object):
     preferences = bpy.context.preferences.addons[__package__].preferences
     current_scene = bpy.context.scene
     if not bpy.data.scenes.get("AC_render_scene"):
@@ -62,10 +62,10 @@ def run_script(filepath, obj:bpy.types.Object):
 
 
     # setup camera
-    if camera := bpy.context.scene.camera is None or bpy.context.scene.camera.name != "AC_Camera_2D":
-        if camera := bpy.context.scene.objects.get("AC_Camera_2D") is None:
-            if camera_object := bpy.data.objects.get("AC_Camera_2D") is None: 
-                if camera_data := bpy.data.cameras.get("AC_Camera_2D") is None:
+    if bpy.context.scene.camera is None or bpy.context.scene.camera.name != "AC_Camera_2D":
+        if bpy.context.scene.objects.get("AC_Camera_2D") is None:
+            if bpy.data.objects.get("AC_Camera_2D") is None: 
+                if bpy.data.cameras.get("AC_Camera_2D") is None:
                     camera_data = bpy.data.cameras.new(name="AC_Camera_2D") 
                 camera_object = bpy.data.objects.new("AC_Camera_2D", camera_data)
             render_scene.collection.objects.link(camera_object)    
@@ -80,17 +80,39 @@ def run_script(filepath, obj:bpy.types.Object):
 
 
     # import object and scale camera to dimensions
-    render_scene.collection.objects.link(obj)
-    obj_greatest_dim = max(obj.dimensions[0], obj.dimensions[1])
+    render_scene.collection.objects.link(start_obj)
+    obj_greatest_dim = max(start_obj.dimensions[0], start_obj.dimensions[1])
     camera.data.ortho_scale = obj_greatest_dim
-    obj.select_set(True)
+    start_obj.select_set(True)
+
+    max_x = 0
+    max_x_vertex = None
+    max_y = 0
+    max_y_vertex = None
+    mesh = start_obj.data
+
+    # Parcourt tous les vertices du mesh
+    for vertex in mesh.vertices:
+        # Convertit la position du vertex dans le système de coordonnées mondial
+        world_vertex = start_obj.matrix_world @ vertex.co
+        
+        # Vérifie si le vertex est plus loin dans la direction -X
+        if world_vertex.x < max_x:
+            max_x = world_vertex.x
+            max_x_vertex = world_vertex
+        if world_vertex.y > max_y:
+            max_y = world_vertex.y
+            max_y_vertex = world_vertex
+
+    offset = max(abs(max_x_vertex[0]), abs(max_y_vertex[1]))
+
 
 
     bpy.ops.render.render(use_viewport=True)
 
     
 
-    render_scene.collection.objects.unlink(obj)
+    render_scene.collection.objects.unlink(start_obj)
 
     svg_name = frame_number+".svg"
 
@@ -98,19 +120,24 @@ def run_script(filepath, obj:bpy.types.Object):
     svg_collection = bpy.context.scene.collection.children[svg_name]
     bpy.context.view_layer.objects.active = svg_collection.objects[-1]
 
+    new_scale = max(start_obj.dimensions) / 0.1445 
 
     # sorts lines and hatch (curves and meshes)
     hatch_objects = []
     line_objects = []
     for obj in svg_collection.objects:
         obj.select_set(True)
+        obj.scale = (new_scale, new_scale, new_scale)
+        obj.location = (offset*-1, offset, 0)
         if obj.type != "MESH":
             with bpy.context.temp_override(active_object=obj, selected_objects=[obj]):
                 bpy.ops.object.convert(target="MESH")
+                bpy.ops.object.transform_apply(location=True, scale=True)
                 line_objects.append(obj)
         else:
+            bpy.ops.object.transform_apply(location=True, scale=True)
             hatch_objects.append(obj)
-                
+
 
     # Treat curves
     if len(line_objects):
@@ -120,6 +147,7 @@ def run_script(filepath, obj:bpy.types.Object):
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.ops.mesh.remove_doubles(threshold = merge_distance)
             bpy.ops.object.mode_set(mode='OBJECT')
+            
     
     # Treat surfaces
     if len(hatch_objects):
@@ -141,9 +169,10 @@ def run_script(filepath, obj:bpy.types.Object):
     #     bpy.ops.object.mode_set(mode='OBJECT')
 
     # bpy.ops.export.dxf(filepath = filepath+frame_number+".dxf", onlySelected = True, mesh_as = "LINEs")
+    
+    
+    bpy.context.window.scene = current_scene
+    bpy.ops.object.mode_set(mode='EDIT')
 
-    # render_scene.collection.objects.unlink() ---------------------
-
-    # bpy.context.window.scene = current_scene ---------------------
 
     return None

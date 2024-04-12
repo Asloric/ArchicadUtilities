@@ -88,7 +88,7 @@ pen     penAttribute_1
 set line_type lineTypeAttribute_1
 set fill fillAttribute_1
 !FRAGMENT2 1, 1
-{symbol_script}
+{symbol_script if symbol_script else "PROJECT2 0,  1"}
 ]]>
 </Script_2D>
 

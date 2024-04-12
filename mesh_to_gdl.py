@@ -269,7 +269,7 @@ ENDIF
         PGON.append([])
 
 
-def run_script(smooth_angle, save_directory):
+def run_script(smooth_angle, save_directory, ob):
     use_vect = False
     
     global PGON
@@ -285,7 +285,6 @@ def run_script(smooth_angle, save_directory):
     converted_materials = []
 
 
-    ob = bpy.context.active_object
     me = ob.data
     bm = bmesh.from_edit_mesh(me)
     uv_layer= bm.loops.layers.uv.verify()
