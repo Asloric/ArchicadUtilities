@@ -32,6 +32,8 @@ class archicad_exporter(bpy.types.AddonPreferences):
     default_pen: bpy.props.IntProperty(name="default pen", default=5)
     default_line: bpy.props.IntProperty(name="default line", default=1)
     default_hatch: bpy.props.IntProperty(name="default line", default=21)
+    default_pen_bg_hatch: bpy.props.IntProperty(name="default pen", default=0)
+    default_pen_fg_hatch: bpy.props.IntProperty(name="default pen", default=41)
     default_surface: bpy.props.IntProperty(name="default surface", default=0)
     default_material: bpy.props.IntProperty(name="default material", default=0)
     preview_resolution: bpy.props.IntProperty(name="preview resolution", default=256)

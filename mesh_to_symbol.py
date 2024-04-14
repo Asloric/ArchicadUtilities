@@ -1,5 +1,13 @@
 import bpy
 import addon_utils
+import bmesh
+from mathutils import Vector
+
+
+preferences = bpy.context.preferences.addons[__package__].preferences
+current_scene = bpy.context.scene
+dissolve_angle = 10 * (3.1459/180)
+merge_distance = 0.00075
 
 
     # https://blender.stackexchange.com/questions/254419/how-to-export-object-outline-as-dwg-or-svg-lines-without-modifying-mesh
@@ -7,9 +15,10 @@ import addon_utils
     # https://blender.stackexchange.com/questions/155275/how-to-set-freestyle-line-set-setting-using-python
 
 
-def run_script(filepath, start_obj:bpy.types.Object):
-    preferences = bpy.context.preferences.addons[__package__].preferences
-    current_scene = bpy.context.scene
+def setup_scene(filepath, start_obj:bpy.types.Object):
+    global preferences
+    global current_scene
+
     if not bpy.data.scenes.get("AC_render_scene"):
         bpy.ops.scene.new(type='NEW')
         new_scene = bpy.data.scenes[-1]
@@ -20,8 +29,6 @@ def run_script(filepath, start_obj:bpy.types.Object):
 
     frame_number = str(bpy.data.scenes["AC_render_scene"].frame_current)
     frame_number = "0" * (4 - (len(frame_number))) + frame_number
-    dissolve_angle = 10 * (3.1459/180)
-    merge_distance = 0.00075
     initial_objects = list(bpy.context.view_layer.objects)
 
 
@@ -57,28 +64,33 @@ def run_script(filepath, start_obj:bpy.types.Object):
     lineset.select_suggestive_contour = False
     lineset.select_ridge_valley = False
 
-
-
-
-
     # setup camera
     if bpy.context.scene.camera is None or bpy.context.scene.camera.name != "AC_Camera_2D":
         if bpy.context.scene.objects.get("AC_Camera_2D") is None:
             if bpy.data.objects.get("AC_Camera_2D") is None: 
                 if bpy.data.cameras.get("AC_Camera_2D") is None:
                     camera_data = bpy.data.cameras.new(name="AC_Camera_2D") 
+                else:
+                    camera_data = bpy.data.cameras["AC_Camera_2D"]
                 camera_object = bpy.data.objects.new("AC_Camera_2D", camera_data)
             render_scene.collection.objects.link(camera_object)    
         camera = bpy.context.scene.objects.get("AC_Camera_2D")
         bpy.context.scene.camera = camera
+    else:
+        camera = bpy.context.scene.camera
 
-    camera.location = 0,0,10
+    # moves the camera over the real center of the object
+    local_bbox_center = 0.125 * sum((Vector(b) for b in start_obj.bound_box), Vector())
+    global_bbox_center = start_obj.matrix_world @ local_bbox_center
+
+    camera.location = global_bbox_center[0],global_bbox_center[1],start_obj.dimensions[2] + 5
     camera.rotation_euler = (0,0,0)
     camera.data.type = "ORTHO"
-    
+
+    return  render_scene, camera, frame_number
 
 
-
+def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.types.Object):
     # import object and scale camera to dimensions
     render_scene.collection.objects.link(start_obj)
     obj_greatest_dim = max(start_obj.dimensions[0], start_obj.dimensions[1])
@@ -122,57 +134,85 @@ def run_script(filepath, start_obj:bpy.types.Object):
 
     new_scale = max(start_obj.dimensions) / 0.1445 
 
+    symbol_script = ""
+
+    for obj in bpy.context.scene.objects:
+        obj.select_set(False)
+
     # sorts lines and hatch (curves and meshes)
-    hatch_objects = []
-    line_objects = []
     for obj in svg_collection.objects:
-        obj.select_set(True)
+        # obj.select_set(True)
         obj.scale = (new_scale, new_scale, new_scale)
         obj.location = (offset*-1, offset, 0)
-        if obj.type != "MESH":
-            with bpy.context.temp_override(active_object=obj, selected_objects=[obj]):
-                bpy.ops.object.convert(target="MESH")
-                bpy.ops.object.transform_apply(location=True, scale=True)
-                line_objects.append(obj)
-        else:
-            bpy.ops.object.transform_apply(location=True, scale=True)
-            hatch_objects.append(obj)
 
-
-    # Treat curves
-    if len(line_objects):
-        with bpy.context.temp_override(active_object=line_objects[-1], selected_objects=line_objects):   
-            bpy.ops.object.join()
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.remove_doubles(threshold = merge_distance)
-            bpy.ops.object.mode_set(mode='OBJECT')
+        # Apply transform at low level
+        mb = obj.matrix_basis
+        if hasattr(obj.data, "transform"):
+            obj.data.transform(mb)
+        for c in obj.children:
+            c.matrix_local = mb @ c.matrix_local
             
-    
-    # Treat surfaces
-    if len(hatch_objects):
-        with bpy.context.temp_override(active_object=hatch_objects[-1], selected_objects=hatch_objects):    
-            bpy.ops.object.join() 
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.dissolve_limited(angle_limit = dissolve_angle)
-            bpy.ops.object.mode_set(mode='OBJECT')
+        obj.matrix_basis.identity()
 
-    # with bpy.context.temp_override(active_object=svg_collection.objects[-1], selected_objects=svg_collection.objects):
-    #     bpy.ops.object.join()
-    #     bpy.context.view_layer.objects.active = svg_collection.objects[-1]
-    #     bpy.ops.object.mode_set(mode='EDIT')
-    #     bpy.ops.mesh.select_all(action='SELECT')
-    #     bpy.ops.mesh.remove_doubles(threshold = merge_distance)
-    #     bpy.ops.mesh.dissolve_limited(angle_limit = dissolve_angle)
-    #     bpy.ops.mesh.remove_doubles(threshold = merge_distance)
-    #     bpy.ops.mesh.delete_loose(use_verts=True, use_edges=False, use_faces=False)
-    #     bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.convert(target="MESH")
+        bpy.ops.object.mode_set(mode='EDIT')
 
-    # bpy.ops.export.dxf(filepath = filepath+frame_number+".dxf", onlySelected = True, mesh_as = "LINEs")
-    
+        if len(obj.data.polygons):         
+            symbol_script += mesh_to_hatch(obj)
+        else:
+            symbol_script += mesh_to_lines(obj)
+    return symbol_script
+
+
+def mesh_to_hatch(obj):
+    mesh = obj.data
+    bm = bmesh.from_edit_mesh(mesh)
+    bmesh.ops.dissolve_limit(bm, angle_limit=dissolve_angle, verts=bm.verts, edges=bm.edges)
+    script_part = ""
+
+    for face in bm.faces:
+        max_n_loop = len(face.loops)
+        command_string = f"POLY2_B {max_n_loop+1}, 2, fillfgpen_1, fillbgpen_1, \n"
+        for loop in face.loops:
+            command_string += f"{str('%.4f' % loop.vert.co[0])}, {str('%.4f' % loop.vert.co[1])}, 33,\n"
+        # close polygon
+        command_string += f"{str('%.4f' % face.loops[0].vert.co[0])}, {str('%.4f' % face.loops[0].vert.co[1])}, -1\n"
+        script_part += command_string
+    bm.free()
+    return script_part
+
+
+def mesh_to_lines(obj):
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=merge_distance)
+    bmesh.ops.dissolve_limit(bm, angle_limit=dissolve_angle, verts=bm.verts, edges=bm.edges)
+    script_part = ""
+
+    for edge in bm.edges:
+        max_n_loop = len(edge.verts)
+        command_string = f"POLY2 {max_n_loop}, 1,\n"
+        for vert in edge.verts:
+            command_string += f"{str('%.4f' % vert.co[0])}, {str('%.4f' % vert.co[1])},\n"
+        # close polygon
+        command_string = command_string[:-2] + "\n"
+        script_part += command_string
+    bm.free()
+    return script_part
+
+
+def run_script(filepath, start_obj:bpy.types.Object):
+    curent_objects = bpy.context.scene.objects[:]
+    render_scene, camera, frame_number = setup_scene(filepath, start_obj)
+    symbol_script = create_mesh(render_scene, camera, frame_number, filepath, start_obj)
+    for obj in bpy.context.scene.objects:
+        if not obj.name in curent_objects:
+            if obj.type == "MESH":
+                bpy.data.objects.remove(obj)
     
     bpy.context.window.scene = current_scene
     bpy.ops.object.mode_set(mode='EDIT')
 
-
-    return None
+    return symbol_script

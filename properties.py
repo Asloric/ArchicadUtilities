@@ -111,6 +111,20 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.ac_type = "FillPattern"
             prop.FillPattern = preferences.default_hatch
 
+        if not "fillbgpen_1" in name_list:
+            prop = self.collection.add()
+            prop.name = "Stylo Fond"
+            prop.identifier = "fillbgpen_1"
+            prop.ac_type = "PenColor"
+            prop.FillPattern = preferences.default_pen_bg_hatch
+
+        if not "fillfgpen_1" in name_list:
+            prop = self.collection.add()
+            prop.name = "Stylo Premier plan"
+            prop.identifier = "fillfgpen_1"
+            prop.ac_type = "PenColor"
+            prop.FillPattern = preferences.default_pen_fg_hatch
+
         
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)

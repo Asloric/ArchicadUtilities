@@ -323,7 +323,7 @@ def run_script(smooth_angle, save_directory, ob):
 
                 # Get the edge angle with other faces
                 smooth = loop.edge.smooth and loop.edge.calc_face_angle(99) <= smooth_angle if loop.edge.smooth else False
-                        
+
                         
                 # If not last edge of face
                 # Create a TEVE with second vertice XYZUV infos (last one loops with first one)
