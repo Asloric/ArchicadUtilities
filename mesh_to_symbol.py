@@ -98,7 +98,7 @@ def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.type
     obj_greatest_dim = max(start_obj.dimensions[0], start_obj.dimensions[1])
     camera.data.ortho_scale = obj_greatest_dim
     start_obj.select_set(True)
-
+    
     max_x = 0
     max_x_vertex = None
     max_y = 0
@@ -134,7 +134,7 @@ def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.type
     svg_collection = bpy.context.scene.collection.children[svg_name]
     bpy.context.view_layer.objects.active = svg_collection.objects[-1]
 
-    new_scale = max(start_obj.dimensions) / 0.1445 
+    new_scale = max(start_obj.dimensions[:-1]) / 0.1445 
 
     symbol_script = ""
 
@@ -209,6 +209,8 @@ def run_script(filepath, start_obj:bpy.types.Object):
     curent_objects = bpy.context.scene.objects[:]
     render_scene, camera, frame_number = setup_scene(filepath, start_obj)
     symbol_script = create_mesh(render_scene, camera, frame_number, filepath, start_obj)
+
+
     for obj in bpy.context.scene.objects:
         if not obj.name in curent_objects:
             if obj.type == "MESH":
