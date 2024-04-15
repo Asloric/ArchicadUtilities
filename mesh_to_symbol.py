@@ -65,9 +65,16 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
         lineset.select_suggestive_contour = False
         lineset.select_ridge_valley = False
         
+    # moves the camera over the real center of the object
+    local_bbox_center = 0.125 * sum((Vector(b) for b in start_obj.bound_box), Vector())
+    global_bbox_center = start_obj.matrix_world @ local_bbox_center
+
 
     # setup camera
-    if bpy.context.scene.camera is None or bpy.context.scene.camera.name != "AC_Camera_2D":
+    if bpy.context.scene.camera is None:
+        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(global_bbox_center[0],global_bbox_center[1],start_obj.dimensions[2] + 5), rotation=(0,0,0), scale=(1, 1, 1))
+        bpy.context.scene.camera.name = "AC_Camera_2D"
+    elif bpy.context.scene.camera.name != "AC_Camera_2D":
         if bpy.context.scene.objects.get("AC_Camera_2D") is None:
             if bpy.data.objects.get("AC_Camera_2D") is None: 
                 if bpy.data.cameras.get("AC_Camera_2D") is None:
@@ -81,9 +88,7 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
     else:
         camera = bpy.context.scene.camera
 
-    # moves the camera over the real center of the object
-    local_bbox_center = 0.125 * sum((Vector(b) for b in start_obj.bound_box), Vector())
-    global_bbox_center = start_obj.matrix_world @ local_bbox_center
+
 
     camera.location = global_bbox_center[0],global_bbox_center[1],start_obj.dimensions[2] + 5
     camera.rotation_euler = (0,0,0)

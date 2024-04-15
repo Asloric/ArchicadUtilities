@@ -20,11 +20,48 @@ def create_thumbnail(object, object_name, save_path):
     # import object in scene
     render_scene.collection.objects.link(object)
 
-    # if no camera, create one
-    if not bpy.context.scene.camera:
-        bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+    # # if no camera, create one
+    # if not bpy.context.scene.camera:
+    #     bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+    #     bpy.context.scene.camera.name = "AC_Camera_3D"
+    # else:
+    #     if bpy.context.scene.camera.name != "AC_Camera_3D":
+    #         bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+    #         bpy.context.scene.camera.name = "AC_Camera_3D"
+    #     else:
+    #         bpy.context.scene.camera.rotation_euler = preferences.camera_angle
+
+    # setup camera
+    if bpy.context.scene.camera is None:
+        if camera_data:= bpy.data.cameras.get("AC_Camera_3D") is not None:
+            if bpy.data.objects.get("AC_Camera_3D") is None: 
+                camera_object = bpy.data.objects.new("AC_Camera_3D", camera_data)
+            else:
+                camera_object = bpy.data.objects.get("AC_Camera_3D")
+            render_scene.collection.objects.link(camera_object)  
+            camera = bpy.context.scene.objects.get("AC_Camera_3D")
+            bpy.context.scene.camera = camera
+        else:
+            bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+            bpy.context.scene.camera.name = "AC_Camera_3D"
+    elif bpy.context.scene.camera.name != "AC_Camera_3D":
+        if bpy.context.scene.objects.get("AC_Camera_3D") is None:
+            if bpy.data.objects.get("AC_Camera_3D") is None: 
+                if bpy.data.cameras.get("AC_Camera_3D") is None:
+                    camera_data = bpy.data.cameras.new(name="AC_Camera_3D") 
+                else:
+                    camera_data = bpy.data.cameras["AC_Camera_3D"]
+                camera_object = bpy.data.objects.new("AC_Camera_3D", camera_data)
+            render_scene.collection.objects.link(camera_object)    
+        camera = bpy.context.scene.objects.get("AC_Camera_3D")
+        bpy.context.scene.camera = camera
     else:
-        bpy.context.scene.camera.rotation_euler = preferences.camera_angle
+        camera = bpy.context.scene.camera
+
+
+
+    camera.location = 0,0,0
+    camera.rotation_euler = preferences.camera_angle
 
     # sun = False
     # for ob in bpy.context.scene.objects:
@@ -36,7 +73,7 @@ def create_thumbnail(object, object_name, save_path):
 
     bpy.context.scene.render.resolution_y = preferences.preview_resolution
     bpy.context.scene.render.resolution_x = preferences.preview_resolution
-    bpy.context.scene.svg_export.use_svg_export = False
+    bpy.context.scene.render.use_freestyle = False
 
     if not bpy.context.scene.world:
         bpy.ops.world.new()
