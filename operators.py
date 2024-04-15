@@ -104,20 +104,24 @@ class ACACCF_OT_apply(bpy.types.Operator):
 
     merge_by_distance: bpy.props.BoolProperty(default=True, name="merge by distance", description="Merge vertices by distance")
     delete_loose: bpy.props.BoolProperty(default=True, name="delete_loose", description="Delete loose geometry")
+    lods: bpy.props.BoolProperty(default=True, name="Compute LODs", description="If subdivision surface is used, also compute a version with level 0")
+    
 
     @classmethod
     def poll(cls, context):
         return context.active_object is not None and context.active_object.type == "MESH"
 
     def execute(self, context):
-        
-        def apply_modifiers(obj):
+        def apply_modifiers(obj, is_lod):
             # ctx = bpy.context.copy()
             # ctx['object'] = obj
             with context.temp_override(object = obj):
                 for _, m in enumerate(obj.modifiers):
                     try:
                         # with context.temp_override(modifier = m):
+                        if is_lod:
+                            if m.type == "SUBSURF":
+                                m.levels = 0
                         bpy.ops.object.modifier_apply(modifier= m.name)
                     except RuntimeError:
                         print(f"Error applying {m.name} to {obj.name}, removing it instead.")
@@ -125,24 +129,37 @@ class ACACCF_OT_apply(bpy.types.Operator):
 
             for m in obj.modifiers:
                 obj.modifiers.remove(m)
-        
 
-        # apply modifiers on every object in the selection
-        bpy.ops.object.duplicate(linked=False)
-        object_list = context.selected_objects
-        active_object = context.active_object
-        for obj in object_list:            
-            apply_modifiers(obj)
+        def compute_lod(is_lod):
+            # apply modifiers on every object in the selection
+            bpy.ops.object.duplicate(linked=False)
+            object_list = context.selected_objects
+            for obj in object_list:            
+                apply_modifiers(obj, is_lod)
 
-        bpy.ops.object.join()
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-        bpy.ops.object.mode_set(mode='EDIT')
-        if self.merge_by_distance:
-            bpy.ops.mesh.remove_doubles()
-        if self.delete_loose:
-            bpy.ops.mesh.delete_loose(use_faces=True)
-        bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
-        bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.join()
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            bpy.ops.object.mode_set(mode='EDIT')
+            if self.merge_by_distance:
+                bpy.ops.mesh.remove_doubles(use_unselected=True, threshold=0.001)
+            if self.delete_loose:
+                bpy.ops.mesh.delete_loose(use_faces=True)
+            bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+
+        initial_object_list = context.selected_objects
+        initial_active_object = context.active_object
+        if self.lods:
+            compute_lod(is_lod = True)
+            context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "_LOD_1")
+            for obj in context.selected_objects:
+                obj.select_set(False)
+            for obj in initial_object_list:
+                obj.select_set(True)
+            bpy.context.view_layer.objects.active = initial_active_object
+        compute_lod(is_lod = False)
+        context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "_LOD_0")
         return {"FINISHED"}
 
     def invoke(self, context, event):
