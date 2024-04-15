@@ -159,7 +159,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
                 obj.select_set(True)
             bpy.context.view_layer.objects.active = initial_active_object
         compute_lod(is_lod = False)
-        context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "_LOD_0")
+        context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "")
         return {"FINISHED"}
 
     def invoke(self, context, event):
