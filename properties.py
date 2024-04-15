@@ -31,7 +31,7 @@ class AC_single_prop(bpy.types.PropertyGroup):
             else:
                 new_identifier = identifier
 
-            for item in bpy.context.window_manager.archicad_converter_props.collection:
+            for item in bpy.context.scene.archicad_converter_props.collection:
                 if item.name == new_identifier and item != self:
                     identifier_suffix += 1
                     return avoide_duplicate(identifier, identifier_suffix)
@@ -83,63 +83,79 @@ class AC_single_prop(bpy.types.PropertyGroup):
     unique_flag: bpy.props.BoolProperty(name="unique", description="I don't know.")
 
 class AC_PropertyGroup_props(bpy.types.PropertyGroup):
+
+    def add_handler(function, handler):
+        if not function in handler:
+            handler.append(function)
+
+    def remove_handler(function, handler):
+        if function in handler:
+            handler.remove(function)
+
+
+
     def ensure_default_props(self, context):
         preferences = bpy.context.preferences.addons[__package__].preferences
         # Ensure the default props are still in the list
 
         # build list of names
-        name_list = [prop.name for prop in self.collection]
+        name_list = [prop.identifier for prop in self.collection]
 
         if not "PenAttribute_1" in name_list:
-            prop = self.collection.add()
-            prop.name = "PenAttribute_1"
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
+            prop.name = "Stylo lignes"
             prop.identifier = "PenAttribute_1"
             prop.ac_type = "PenColor"
             prop.PenColor = preferences.default_pen
 
         if not "lineTypeAttribute_1" in name_list:
-            prop = self.collection.add()
-            prop.name = "lineTypeAttribute_1"
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
+            prop.name = "Type de lignes"
             prop.identifier = "lineTypeAttribute_1"
             prop.ac_type = "LineType"
             prop.LineType = preferences.default_line
 
         if not "fillAttribute_1" in name_list:
-            prop = self.collection.add()
-            prop.name = "fillAttribute_1"
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
+            prop.name = "Hachure"
             prop.identifier = "fillAttribute_1"
             prop.ac_type = "FillPattern"
             prop.FillPattern = preferences.default_hatch
 
         if not "fillbgpen_1" in name_list:
-            prop = self.collection.add()
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
             prop.name = "Stylo Fond"
             prop.identifier = "fillbgpen_1"
             prop.ac_type = "PenColor"
             prop.FillPattern = preferences.default_pen_bg_hatch
 
         if not "fillfgpen_1" in name_list:
-            prop = self.collection.add()
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
             prop.name = "Stylo Premier plan"
             prop.identifier = "fillfgpen_1"
             prop.ac_type = "PenColor"
             prop.FillPattern = preferences.default_pen_fg_hatch
 
-        
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)
     active_user_index: bpy.props.IntProperty(update=ensure_default_props)
 
     def register():
-        bpy.types.WindowManager.archicad_converter_props = bpy.props.PointerProperty(type=AC_PropertyGroup_props)
+        bpy.types.Scene.archicad_converter_props = bpy.props.PointerProperty(type=AC_PropertyGroup_props)
+        AC_PropertyGroup_props.add_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
     
     def unregister():
-        del bpy.types.WindowManager.archicad_converter_props
+        AC_PropertyGroup_props.remove_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
+        del bpy.types.Scene.archicad_converter_props
+
+
+
+
 
 class AC_UL_props(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        if item.name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
-            layout.label(text=item.identifier)
+        if item.name in ["Stylo lignes", "Type de lignes", "Hachure", "Stylo Fond", "Stylo Premier plan"]:
+            layout.label(text=item.name)
         else:
             layout.prop(item, "identifier", emboss=False, text="")
         layout.separator()

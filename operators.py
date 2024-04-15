@@ -36,6 +36,7 @@ def create_thumbnail(object, object_name, save_path):
 
     bpy.context.scene.render.resolution_y = preferences.preview_resolution
     bpy.context.scene.render.resolution_x = preferences.preview_resolution
+    bpy.context.scene.svg_export.use_svg_export = False
 
     if not bpy.context.scene.world:
         bpy.ops.world.new()
@@ -351,7 +352,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             # Set the blender's file name as object name. 
             props.save_path = os.path.dirname(bpy.context.blend_data.filepath) + "\\"
         
-        properties.AC_PropertyGroup_props.ensure_default_props(context.window_manager.archicad_converter_props, context)
+        properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)
         
 class AC_OT_property_add(bpy.types.Operator):
@@ -359,7 +360,7 @@ class AC_OT_property_add(bpy.types.Operator):
     bl_label = "add property"
 
     def execute(self, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         item = prop.collection.add()
         item.name = "property_" + str(len(prop.collection))
         item.identifier = "property_" + str(len(prop.collection))
@@ -372,13 +373,13 @@ class AC_OT_property_remove(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         if prop.active_user_index < len(prop.collection):
             if not prop.collection[prop.active_user_index].name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
                 return True
 
     def execute(self, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         prop.collection.remove(prop.active_user_index)
         if prop.active_user_index >= len(prop.collection):
             prop.active_user_index -= 1
@@ -393,11 +394,11 @@ class AC_OT_property_up(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         return prop.active_user_index > 0
 
     def execute(self, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
 
         prop.collection.move(prop.active_user_index, prop.active_user_index-1)
         prop.active_user_index -= 1
@@ -409,11 +410,11 @@ class AC_OT_property_down(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         return prop.active_user_index < len(prop.collection) - 1
     
     def execute(self, context):
-        prop = context.window_manager.archicad_converter_props
+        prop = context.scene.archicad_converter_props
         prop.collection.move(prop.active_user_index, prop.active_user_index+1)
         prop.active_user_index += 1
         return {"FINISHED"} 

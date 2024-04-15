@@ -17,7 +17,7 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 	# Defines the attrubues parameters
 	attributes_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
-	for propattr in bpy.context.window_manager.archicad_converter_props.collection:
+	for propattr in bpy.context.scene.archicad_converter_props.collection:
 		attributes_str +=f"""
 		<{propattr.ac_type} Name="{propattr.identifier}">
 			<Description><![CDATA["{propattr.name}"]]></Description>

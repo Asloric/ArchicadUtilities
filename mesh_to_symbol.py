@@ -52,17 +52,19 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
     bpy.data.scenes["AC_render_scene"].svg_export.object_fill = True
     bpy.context.window.view_layer.use_freestyle = True
     freestyle_settings = bpy.context.window.view_layer.freestyle_settings
-    lineset = freestyle_settings.linesets.new("AC_2d_lineset")
-    lineset.linestyle.use_export_fills = True
-    lineset.select_silhouette = True
-    lineset.select_crease = False
-    lineset.select_border = False
-    lineset.select_edge_mark = False
-    lineset.select_contour = False
-    lineset.select_external_contour = False
-    lineset.select_material_boundary = False
-    lineset.select_suggestive_contour = False
-    lineset.select_ridge_valley = False
+    if freestyle_settings.linesets.active is None or freestyle_settings.linesets.active is not None and freestyle_settings.linesets.active.name != "AC_2d_lineset":
+        lineset = freestyle_settings.linesets.new("AC_2d_lineset")
+        lineset.linestyle.use_export_fills = True
+        lineset.select_silhouette = True
+        lineset.select_crease = False
+        lineset.select_border = False
+        lineset.select_edge_mark = False
+        lineset.select_contour = False
+        lineset.select_external_contour = False
+        lineset.select_material_boundary = False
+        lineset.select_suggestive_contour = False
+        lineset.select_ridge_valley = False
+        
 
     # setup camera
     if bpy.context.scene.camera is None or bpy.context.scene.camera.name != "AC_Camera_2D":

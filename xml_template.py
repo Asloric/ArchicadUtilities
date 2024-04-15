@@ -21,7 +21,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 	# Defines the attrubues parameters
 	attributes_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
-	for propattr in bpy.context.window_manager.archicad_converter_props.collection:
+	for propattr in bpy.context.scene.archicad_converter_props.collection:
 		flags = ""
 		if propattr.hide_flag:
 			flags += "<ParFlg_Hidden/>\n"

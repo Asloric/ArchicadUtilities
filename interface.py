@@ -14,8 +14,8 @@ class ACACCF_PT_Main(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout.column(align=False)
-        if not len(context.window_manager.archicad_converter_props.collection):
-            properties.AC_PropertyGroup_props.ensure_default_props(context.window_manager.archicad_converter_props, context)
+        # if not len(context.scene.archicad_converter_props.collection):
+        #     properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
 
             
 class ACACCF_PT_Cleanup(bpy.types.Panel):
@@ -60,7 +60,7 @@ class ACACCF_PT_Properties(bpy.types.Panel):
         layout = self.layout.column(align = False)
 
         top_part = layout.row(align = False)
-        top_part.template_list("AC_UL_props", "", bpy.context.window_manager.archicad_converter_props, "collection", bpy.context.window_manager.archicad_converter_props, "active_user_index")
+        top_part.template_list("AC_UL_props", "", bpy.context.scene.archicad_converter_props, "collection", bpy.context.scene.archicad_converter_props, "active_user_index")
 
         buttons_col = top_part.column(align=True)
         buttons_col.operator("acaccf.property_add", icon="ADD", text="")
@@ -71,7 +71,7 @@ class ACACCF_PT_Properties(bpy.types.Panel):
         buttons_col.operator("acaccf.property_down", icon="TRIA_DOWN", text="")
 
         
-        prop_group = bpy.context.window_manager.archicad_converter_props
+        prop_group = bpy.context.scene.archicad_converter_props
 
         if len(prop_group.collection) and prop_group.active_user_index < len(prop_group.collection):
             prop = prop_group.collection[prop_group.active_user_index]
@@ -90,15 +90,10 @@ class ACACCF_PT_Properties(bpy.types.Panel):
             
 
 
-            if prop.identifier in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
-                if prop.identifier == "PenAttribute_1":
-                    line = bottom_part.row()
-                    line.label(text= "")
-                    line.label(text= "Pen Color")
-                else:
-                    line = bottom_part.row()
-                    line.label(text= "")
-                    line.label(text= "Line Type")
+            if prop.identifier in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1", "fillbgpen_1", "fillfgpen_1"]:
+                line = bottom_part.row()
+                line.label(text= "")
+                line.label(text=prop.ac_type)
                 line = bottom_part.row()
                 line.label(text="") 
                 line.label(text=prop.name) 
