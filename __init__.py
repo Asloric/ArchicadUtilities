@@ -50,6 +50,8 @@ class archicad_exporter(bpy.types.AddonPreferences):
         layout.prop(self, "default_pen", text="Stylo de contour")
         layout.prop(self, "default_line", text="Type de ligne")
         layout.prop(self, "default_hatch", text="Type de hachure")
+        layout.prop(self, "default_pen_fg_hatch", text="Stylo premier plan de hachure")
+        layout.prop(self, "default_pen_bg_hatch", text="Stylo fond de hachure")
         
         layout.prop(self, "default_surface", text="Surface de 3D")
         layout.prop(self, "default_material", text="Materiau de construction")

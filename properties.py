@@ -127,14 +127,14 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.name = "Stylo Fond"
             prop.identifier = "fillbgpen_1"
             prop.ac_type = "PenColor"
-            prop.FillPattern = preferences.default_pen_bg_hatch
+            prop.PenColor = preferences.default_pen_bg_hatch
 
         if not "fillfgpen_1" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
             prop.name = "Stylo Premier plan"
             prop.identifier = "fillfgpen_1"
             prop.ac_type = "PenColor"
-            prop.FillPattern = preferences.default_pen_fg_hatch
+            prop.PenColor = preferences.default_pen_fg_hatch
 
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)
