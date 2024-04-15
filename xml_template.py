@@ -32,16 +32,27 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 		if propattr.unique_flag:
 			flags += "<ParFlg_Unique/>\n"
 
+		if propattr.ac_type == "String":
+			attributes_str += f"""
+			<{propattr.ac_type} Name="{propattr.identifier}">
+				<Description><![CDATA["{propattr.name}"]]></Description>
+				{f'''<Flags>
+					{flags}
+				</Flags>''' if flags != "" else ''}
+				<Value><![CDATA["{eval(f"propattr.{propattr.ac_type}")}"]]></Value>
+			</{propattr.ac_type}>
+	"""
 
-		attributes_str += f"""
-		<{propattr.ac_type} Name="{propattr.identifier}">
-			<Description><![CDATA["{propattr.name}"]]></Description>
-			{f'''<Flags>
-    			{flags}
-			</Flags>''' if flags != "" else ''}
-			<Value>{eval(f"propattr.{propattr.ac_type}")}</Value>
-		</{propattr.ac_type}>
-"""
+		else:
+			attributes_str += f"""
+			<{propattr.ac_type} Name="{propattr.identifier}">
+				<Description><![CDATA["{propattr.name}"]]></Description>
+				{f'''<Flags>
+					{flags}
+				</Flags>''' if flags != "" else ''}
+				<Value>{eval(f"propattr.{propattr.ac_type}")}</Value>
+			</{propattr.ac_type}>
+	"""
 		
 
 	parameter_surface = ""

@@ -99,27 +99,37 @@ def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.type
     camera.data.ortho_scale = obj_greatest_dim
     start_obj.select_set(True)
     
-    max_x = 0
-    max_x_vertex = None
-    max_y = 0
-    max_y_vertex = None
-    mesh = start_obj.data
+    # max_x = 0
+    # max_x_vertex = None
+    # max_x_vertex = None
+    # max_y = 0
+    # max_y_vertex = None
+    # max_y_vertex = None
+    # mesh = start_obj.data
 
     # Parcourt tous les vertices du mesh
-    for vertex in mesh.vertices:
-        # Convertit la position du vertex dans le système de coordonnées mondial
-        world_vertex = start_obj.matrix_world @ vertex.co
+#     for vertex in mesh.vertices:
+#         # Convertit la position du vertex dans le système de coordonnées mondial
+#         world_vertex = start_obj.matrix_world @ vertex.co
         
-        # Vérifie si le vertex est plus loin dans la direction -X
-        if world_vertex.x < max_x:
-            max_x = world_vertex.x
-            max_x_vertex = world_vertex
-        if world_vertex.y > max_y:
-            max_y = world_vertex.y
-            max_y_vertex = world_vertex
+#         # Vérifie si le vertex est plus loin dans la direction -X
+#         if world_vertex.x < max_x:
+#             max_x = world_vertex.x
+#             max_x_vertex = world_vertex
+#             rel_x_vertex = vertex.co.x
+#         if world_vertex.y > max_y:
+#             max_y = world_vertex.y
+#             max_y_vertex = world_vertex
+#             rel_y_vertex = vertex.co.y
 
-    offset = max(abs(max_x_vertex[0]), abs(max_y_vertex[1]))
-
+#     offset = max(abs(max_x_vertex[0])-abs(rel_x_vertex), abs(max_y_vertex[1])-abs(rel_y_vertex))
+# #######
+#
+#
+# Voir le calcul de l'offset. faut arriver à mettre le centre du mesh au millieu du monde.
+#
+#
+########
 
 
     bpy.ops.render.render(use_viewport=True)
@@ -141,13 +151,15 @@ def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.type
     for obj in bpy.context.scene.objects:
         obj.select_set(False)
 
+    offset = max(abs(start_obj.bound_box[3][0]), abs(start_obj.bound_box[3][1]))
+
     # sorts lines and hatch (curves and meshes)
     for obj in svg_collection.objects:
         # obj.select_set(True)
         obj.scale = (new_scale, new_scale, new_scale)
         obj.location = (offset*-1, offset, 0)
 
-        # Apply transform at low level
+        # Apply transform at low level to avoid operators
         mb = obj.matrix_basis
         if hasattr(obj.data, "transform"):
             obj.data.transform(mb)
@@ -210,12 +222,14 @@ def run_script(filepath, start_obj:bpy.types.Object):
     render_scene, camera, frame_number = setup_scene(filepath, start_obj)
     symbol_script = create_mesh(render_scene, camera, frame_number, filepath, start_obj)
 
-
     for obj in bpy.context.scene.objects:
         if not obj.name in curent_objects:
             if obj.type == "MESH":
                 bpy.data.objects.remove(obj)
     
+    for col in bpy.context.scene.collection.children:
+        bpy.data.collections.remove(col)
+
     bpy.context.window.scene = current_scene
     bpy.ops.object.mode_set(mode='EDIT')
 
