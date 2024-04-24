@@ -281,8 +281,17 @@ def run_script(smooth_angle, save_directory, ob):
     global face_id_bl2ac
     global Textures_ids
     global material_cache
+    
     #Clear list
+    PGON = []
+    VECT_LIST = []
+    MATERIAL = []
+    MATERIAL_ASSIGN = []
+    TEXTURE = []
     converted_materials = []
+    face_id_bl2ac = {}
+    Textures_ids = {}
+    material_cache = {}
 
 
     me = ob.data

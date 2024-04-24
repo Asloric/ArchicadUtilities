@@ -17,7 +17,7 @@ merge_distance = 0.00075
 
 def setup_scene(filepath, start_obj:bpy.types.Object):
     global preferences
-    global current_scene
+    global current_scene 
 
     if not bpy.data.scenes.get("AC_render_scene"):
         bpy.ops.scene.new(type='NEW')
@@ -36,13 +36,14 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
     is_enabled, is_loaded = addon_utils.check("render_freestyle_svg")
     if not is_loaded:
         print("Error : render_freestyle_svg addon is missing")
-        return None # Fallback to default 2D Script
+        return None, None, None # Fallback to default 2D Script
     
     if not is_enabled:
         addon_utils.enable("render_freestyle_svg")
 
 
     # setup scene freestyle settings to get contours
+    bpy.context.scene.render.engine = 'BLENDER_EEVEE'
     bpy.data.scenes["AC_render_scene"].render.filepath = filepath
     bpy.data.scenes["AC_render_scene"].render.resolution_x = 512
     bpy.data.scenes["AC_render_scene"].render.resolution_y = 512
@@ -50,6 +51,7 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
     bpy.data.scenes["AC_render_scene"].svg_export.use_svg_export = True
     bpy.data.scenes["AC_render_scene"].svg_export.mode = "FRAME"
     bpy.data.scenes["AC_render_scene"].svg_export.object_fill = True
+    bpy.data.scenes["AC_render_scene"].svg_export.split_at_invisible = True
     bpy.context.window.view_layer.use_freestyle = True
     freestyle_settings = bpy.context.window.view_layer.freestyle_settings
     if freestyle_settings.linesets.active is None or freestyle_settings.linesets.active is not None and freestyle_settings.linesets.active.name != "AC_2d_lineset":
@@ -225,6 +227,8 @@ def mesh_to_lines(obj):
 def run_script(filepath, start_obj:bpy.types.Object):
     curent_objects = bpy.context.scene.objects[:]
     render_scene, camera, frame_number = setup_scene(filepath, start_obj)
+    if not (render_scene, camera, frame_number):
+        return None
     symbol_script = create_mesh(render_scene, camera, frame_number, filepath, start_obj)
 
     for obj in bpy.context.scene.objects:

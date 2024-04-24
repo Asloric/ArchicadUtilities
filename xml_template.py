@@ -95,10 +95,12 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
+MUL2 A*{(1/bound_x) if bound_x else 0}, B*{(1/bound_y) if bound_y else 0}
 pen     penAttribute_1
 set line_type lineTypeAttribute_1
 set fill fillAttribute_1
 !FRAGMENT2 1, 1
+!END
 {symbol_script if symbol_script else "PROJECT2 0,  1"}
 ]]>
 </Script_2D>
