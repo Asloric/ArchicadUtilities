@@ -168,7 +168,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 
 class AC_UL_props(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        if item.name in ["Stylo lignes", "Type de lignes", "Hachure", "Stylo Fond", "Stylo Premier plan"]:
+        if item.name in ["Stylo lignes", "Type de lignes", "Hachure", "Stylo Fond", "Stylo Premier plan", "ancien GUID", "Reference produit"]:
             layout.label(text=item.name)
         else:
             layout.prop(item, "identifier", emboss=False, text="")
