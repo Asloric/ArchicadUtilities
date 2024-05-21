@@ -76,6 +76,7 @@ def setup_scene(filepath, start_obj:bpy.types.Object):
     if bpy.context.scene.camera is None:
         bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(global_bbox_center[0],global_bbox_center[1],start_obj.dimensions[2] + 5), rotation=(0,0,0), scale=(1, 1, 1))
         bpy.context.scene.camera.name = "AC_Camera_2D"
+        camera = bpy.context.scene.camera
     elif bpy.context.scene.camera.name != "AC_Camera_2D":
         if bpy.context.scene.objects.get("AC_Camera_2D") is None:
             if bpy.data.objects.get("AC_Camera_2D") is None: 

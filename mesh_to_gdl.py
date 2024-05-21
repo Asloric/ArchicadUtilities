@@ -215,7 +215,7 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 spec = (iorb*iorb)/0.08
 
                 MATERIAL.append(f'''
-DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str}, {(alpha * -1) + 1}, {spec}, {spec}, {spec}, {emission[0]}, {emission[1]}, {emission[2]}, {emission_str}
+DEFINE MATERIAL "material_{mat_name}" 0, {color[0]}, {color[1]}, {color[2]}, 1, 1, {spec}, {(alpha * -1) + 1},  {emission_str*100}, {((alpha * -1) + 1)*4}, {spec}, {spec}, {spec}, {emission[0]*emission_str}, {emission[1]*emission_str}, {emission[2]*emission_str}, {emission_str*65.5}
                     ''')
 
             else:

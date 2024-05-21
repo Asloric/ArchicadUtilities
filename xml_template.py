@@ -20,6 +20,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 	# Defines the attrubues parameters
 	attributes_str = ""
+	old_guid_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
 	for propattr in bpy.context.scene.archicad_converter_props.collection:
 		flags = ""
@@ -42,6 +43,10 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 				<Value><![CDATA["{eval(f"propattr.{propattr.ac_type}")}"]]></Value>
 			</{propattr.ac_type}>
 	"""
+
+		if propattr.identifier == "old_GUID":
+			old_guid_str += f"""<MainGUID>"{propattr.String}"</MainGUID>		
+"""
 
 		else:
 			attributes_str += f"""
@@ -87,8 +92,7 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70D{lod if lod else 0}-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
 <Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
-	<MainGUID>F938E33A-329D-4A36-BE3E-85E126820996</MainGUID>
-	<MainGUID>103E8D2C-8230-42E1-9597-46F84CCE28C0</MainGUID>
+	{old_guid_str}
 </Ancestry>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -99,8 +103,17 @@ MUL2 A*{(1/bound_x) if bound_x else 0}, B*{(1/bound_y) if bound_y else 0}
 pen     penAttribute_1
 set line_type lineTypeAttribute_1
 set fill fillAttribute_1
+
+!!!--- Celui ci affiche la projection en 2D du 3D ---
+!PROJECT2
+!END
+
+!!!--- Celui ci affiche le contenu de "Symbole 2D" ---
 !FRAGMENT2 1, 1
 !END
+
+!!!-------   Symbole 2D généré par l'extension --------
+
 {symbol_script if symbol_script else "PROJECT2 0,  1"}
 ]]>
 </Script_2D>

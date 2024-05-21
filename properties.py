@@ -136,6 +136,20 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.ac_type = "PenColor"
             prop.PenColor = preferences.default_pen_fg_hatch
 
+        if not "product_reference" in name_list:
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
+            prop.name = "Reference produit"
+            prop.identifier = "product_reference"
+            prop.ac_type = "String"
+            prop.String = ""
+
+        if not "old_GUID" in name_list:
+            prop = bpy.context.scene.archicad_converter_props.collection.add()
+            prop.name = "ancien GUID"
+            prop.identifier = "old_GUID"
+            prop.ac_type = "String"
+            prop.String = ""
+
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)
     active_user_index: bpy.props.IntProperty(update=ensure_default_props)
