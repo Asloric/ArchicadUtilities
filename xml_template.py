@@ -120,7 +120,12 @@ call "DetlevelFunctionMacro" parameters	iDetlevel2D	= iDetlevel2D,
 								returned_parameters _iDetlevel2D
 
 if _iDetlevel2D = DETLEVEL_2D_DRAFT then
-	rect2 A*(-0.5), B*(-0.5), A*0.5, B*0.5
+	POLY2_B 5, 1+2+64, fillfgpen_1, fillbgpen_1, 
+			A*(-0.5), B*(-0.5), 1+32,
+			A*0.5, B*(-0.5), 1+32,
+			A*0.5, B*0.5, 1+32,
+			A*(-0.5), B*0.5, 1+32,
+			A*(-0.5), B*(-0.5), -1
 	end
 endif
 
@@ -187,21 +192,6 @@ EXIT ZZYZX, A, B
 		<WDWallInset>0</WDWallInset>
 	</ParamSectHeader>
 	<Parameters>
-		<Length Name="A">
-			<Description><![CDATA["1ère dimension"]]></Description>
-			<Fix/>
-			<Value>{bound_x}</Value>
-		</Length>
-		<Length Name="B">
-			<Description><![CDATA["2ème dimension"]]></Description>
-			<Fix/>
-			<Value>{bound_y}</Value>
-		</Length>
-		<Length Name="ZZYZX">
-			<Description><![CDATA["Hauteur"]]></Description>
-			<Fix/>
-			<Value>{bound_z}</Value>
-		</Length>
 		<Boolean Name="AC_show2DHotspotsIn3D">
 			<Description><![CDATA["Afficher points chauds 2D en 3D"]]></Description>
 			<Fix/>
@@ -210,22 +200,6 @@ EXIT ZZYZX, A, B
 			</Flags>
 			<Value>1</Value>
 		</Boolean>
-		<Integer Name="iDetlevel3D">
-			<Description><![CDATA["iDetlevel3D"]]></Description>
-			<Fix/>
-			<Flags>
-				<ParFlg_Hidden/>
-			</Flags>
-			<Value>1</Value>
-		</Integer>
-		<Integer Name="iDetlevel2D">
-			<Description><![CDATA["iDetlevel2D"]]></Description>
-			<Fix/>
-			<Flags>
-				<ParFlg_Hidden/>
-			</Flags>
-			<Value>1</Value>
-		</Integer>
 		<Length Name="ac_bottomlevel">
 			<Description><![CDATA["Niveau inférieur"]]></Description>
 			<Fix/>
@@ -242,6 +216,44 @@ EXIT ZZYZX, A, B
 			</Flags>
 			<Value>0</Value>
 		</Length>
+
+
+		<Length Name="A">
+			<Description><![CDATA["1ère dimension"]]></Description>
+			<Fix/>
+			<Value>{bound_x}</Value>
+		</Length>
+		<Length Name="B">
+			<Description><![CDATA["2ème dimension"]]></Description>
+			<Fix/>
+			<Value>{bound_y}</Value>
+		</Length>
+		<Length Name="ZZYZX">
+			<Description><![CDATA["Hauteur"]]></Description>
+			<Fix/>
+			<Value>{bound_z}</Value>
+		</Length>
+		
+		<Title Name="DISPLAY_TITLE">
+			<Description><![CDATA["AFFICHAGE"]]></Description>
+		</Title>
+		<Integer Name="iDetlevel3D">
+			<Description><![CDATA["Affichage 3D"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>1</Value>
+		</Integer>
+		<Integer Name="iDetlevel2D">
+			<Description><![CDATA["Affichage plan"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Child/>
+			</Flags>
+			<Value>1</Value>
+		</Integer>
+		
 
 		{attributes_str}
 		
@@ -301,7 +313,17 @@ DETLEVEL_2D_SYMBOLIC	= 6
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[]]>
+<![CDATA[
+values{"{2}"} "iDetlevel3D",
+			1, `Selon options vue`,
+			3, `Détaillé`,
+			5, "Simple"
+			
+values{"{2}"} "iDetlevel2D",
+			1, `Selon options vue`,
+			3, `Détaillé`,
+			5, "Simple"
+]]>
 </Script_VL>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->

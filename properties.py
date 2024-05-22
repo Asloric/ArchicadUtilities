@@ -107,6 +107,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "PenAttribute_1"
             prop.ac_type = "PenColor"
             prop.PenColor = preferences.default_pen
+            prop.child_flag = True
 
         if not "lineTypeAttribute_1" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
@@ -114,6 +115,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "lineTypeAttribute_1"
             prop.ac_type = "LineType"
             prop.LineType = preferences.default_line
+            prop.child_flag = True
 
         if not "fillAttribute_1" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
@@ -121,6 +123,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "fillAttribute_1"
             prop.ac_type = "FillPattern"
             prop.FillPattern = preferences.default_hatch
+            prop.child_flag = True
 
         if not "fillbgpen_1" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
@@ -128,6 +131,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "fillbgpen_1"
             prop.ac_type = "PenColor"
             prop.PenColor = preferences.default_pen_bg_hatch
+            prop.child_flag = True
 
         if not "fillfgpen_1" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
@@ -135,6 +139,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "fillfgpen_1"
             prop.ac_type = "PenColor"
             prop.PenColor = preferences.default_pen_fg_hatch
+            prop.child_flag = True
 
         if not "product_reference" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
@@ -142,6 +147,7 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.identifier = "product_reference"
             prop.ac_type = "String"
             prop.String = ""
+            prop.child_flag = False
 
         if not "old_GUID" in name_list:
             prop = bpy.context.scene.archicad_converter_props.collection.add()
