@@ -131,7 +131,7 @@ endif
 
 
 !!!--- Celui ci affiche la projection en 2D du 3D ---
-!PROJECT2 0,  1
+!PROJECT2 3, 270, 2
 !END
 
 !!!--- Celui ci affiche le contenu de "Symbole 2D" ---
