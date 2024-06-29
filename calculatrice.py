@@ -41,7 +41,7 @@ class MagicCalculator(tk.Tk):
             highlightbackground='#2b2b2b',
             bd=3,
             relief='flat',
-            font=('Consolas', 13)
+            font=('Consolas', 12)
         )
 
         # Lier l'événement FocusIn pour revenir à la zone de texte
