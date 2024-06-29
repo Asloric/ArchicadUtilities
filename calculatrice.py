@@ -1,5 +1,5 @@
 # Désactive l'antivirus pour compiler:
-# pyinstaller calculatrice.py --noconsole --hidden-import=tkinter --hidden-import=regex
+# pyinstaller calculatrice.py --noconsole --hidden-import=tkinter --hidden-import=regex --onefile
 import tkinter as tk
 import re
 
