@@ -6,26 +6,59 @@ import re
 class MagicCalculator(tk.Tk):
     def __init__(self):
         super().__init__()
-        
+        self.config(bg="#242424")
         self.title("Magic Calculator")
         
         # Zone de texte pour entrer les formules et afficher les calculs
         self.text_area = tk.Text(self, width=50, height=20)
-        self.text_area.grid(row=0, column=0, padx=10, pady=10)
+        self.text_area.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')
         self.text_area.bind('<<Modified>>', self.on_text_change)
         self.text_area.bind('<Return>', self.on_text_change)
-        
+        self.text_area.config(
+            bg="#313131",
+            fg="#94cdf0",
+            highlightthickness=0,
+            highlightbackground='#2b2b2b',
+            bd=0,
+            relief='flat',
+            font=('Consolas', 13)
+        )
         self.text_area.focus_set()
-        self.text_area.tag_config('special', foreground='red')
-        self.text_area.tag_config('paren', foreground='green')
+        self.text_area.tag_config('special', foreground='white')
+        self.text_area.tag_config('function', foreground='#dcdcaa')
+        self.text_area.tag_config('paren', foreground='#ffd710')
+        self.text_area.tag_config('comment', foreground='#6a9955')
         self.text_area.bind("<KeyRelease>", self.color_special_characters)
+
         # Liste pour afficher les résultats
-        self.result_list = tk.Listbox(self, width=30, height=20)
-        self.result_list.grid(row=0, column=1, padx=10, pady=10)
+        self.result_list = tk.Listbox(self, width=20, height=20)
+        self.result_list.grid(row=0, column=1, padx=0, pady=0, sticky='ns')
         self.result_list.bind("<<ListboxSelect>>", self.on_result_selected)
-        
+        self.result_list.config(
+            bg="#242424",
+            fg="white",
+            highlightthickness=3,
+            highlightbackground='#2b2b2b',
+            bd=3,
+            relief='flat',
+            font=('Consolas', 13)
+        )
+
+        # Lier l'événement FocusIn pour revenir à la zone de texte
+        self.result_list.bind("<FocusIn>", self.return_focus)
+
+        # Configuration du redimensionnement
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_rowconfigure(0, weight=1)
+
         self.results = []
         self.formulas = []
+
+
+    def return_focus(self, event):
+        self.text_area.focus_set()
+
 
     def on_text_change(self, event=None):
         # Désactiver l'événement <<Modified>> temporairement pour éviter les boucles infinies
@@ -177,7 +210,7 @@ class MagicCalculator(tk.Tk):
                 self.text_area.insert(tk.INSERT, f"ans({selected_index})")
             else:
 
-                if re.match(r"ans\(\d+\)$", self.text_area.get(f"{line}.0",f"{line}.end")):
+                if re.match(r'ans\(\d+\)(?:[+\-*/^]ans\(\d+\))*', self.text_area.get(f"{line}.0",f"{line}.end")):
                     self.text_area.insert(tk.INSERT, f"+ans({selected_index})")
         else:
             # Insérer "ans(x)" à la position du curseur dans la zone de texte
@@ -187,6 +220,8 @@ class MagicCalculator(tk.Tk):
         # Effacer les anciens tags
         self.text_area.tag_remove('special', '1.0', tk.END)
         self.text_area.tag_remove('paren', '1.0', tk.END)
+        self.text_area.tag_remove('comment', '1.0', tk.END)
+        self.text_area.tag_remove('function', '1.0', tk.END)
         
         # Obtenir le contenu de la zone de texte
         content = self.text_area.get('1.0', tk.END)
@@ -202,7 +237,7 @@ class MagicCalculator(tk.Tk):
             end_position = f"1.0 + {end_index} chars"
             
             # Appliquer le tag 'special' au texte correspondant
-            self.text_area.tag_add('paren', start_position, end_position)
+            self.text_area.tag_add('function', start_position, end_position)
         
         # Appliquer le tag 'paren' pour les parenthèses
         paren_pattern = re.compile(r'[()]')
@@ -223,6 +258,17 @@ class MagicCalculator(tk.Tk):
                 position = f"1.0 + {index} chars"
                 # Appliquer le tag 'special' à ces caractères
                 self.text_area.tag_add('special', position, f"{position} + 1 chars")
+
+        # Appliquer le tag 'comment' pour les commentaires
+            comment_pattern = re.compile(r'#.*')
+            for match in comment_pattern.finditer(content):
+                start_index = match.start()
+                end_index = match.end()
+                start_position = f"1.0 + {start_index} chars"
+                end_position = f"1.0 + {end_index} chars"
+                
+                # Appliquer le tag 'comment' au texte correspondant
+                self.text_area.tag_add('comment', start_position, end_position)
 
 if __name__ == "__main__":
     app = MagicCalculator()
