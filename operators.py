@@ -44,6 +44,7 @@ def create_thumbnail(object, object_name, save_path):
         else:
             bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
             bpy.context.scene.camera.name = "AC_Camera_3D"
+            camera = bpy.context.scene.camera
     elif bpy.context.scene.camera.name != "AC_Camera_3D":
         if bpy.context.scene.objects.get("AC_Camera_3D") is None:
             if bpy.data.objects.get("AC_Camera_3D") is None: 

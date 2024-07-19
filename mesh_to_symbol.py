@@ -5,7 +5,7 @@ from mathutils import Vector
 
 
 preferences = bpy.context.preferences.addons[__package__].preferences
-current_scene = bpy.context.scene
+current_scene = None
 dissolve_angle = 10 * (3.1459/180)
 merge_distance = 0.00075
 
@@ -17,7 +17,8 @@ merge_distance = 0.00075
 
 def setup_scene(filepath, start_obj:bpy.types.Object):
     global preferences
-    global current_scene 
+    global current_scene
+    current_scene = bpy.context.scene 
 
     if not bpy.data.scenes.get("AC_render_scene"):
         bpy.ops.scene.new(type='NEW')
@@ -228,7 +229,9 @@ def mesh_to_lines(obj):
 def run_script(filepath, start_obj:bpy.types.Object):
     curent_objects = bpy.context.scene.objects[:]
     render_scene, camera, frame_number = setup_scene(filepath, start_obj)
-    if not (render_scene, camera, frame_number):
+    if (render_scene, camera, frame_number) == (None, None, None):
+        bpy.context.window.scene = current_scene
+        bpy.ops.object.mode_set(mode='EDIT')
         return None
     symbol_script = create_mesh(render_scene, camera, frame_number, filepath, start_obj)
 
