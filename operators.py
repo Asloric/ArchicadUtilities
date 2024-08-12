@@ -263,7 +263,7 @@ class ACACCF_OT_export(bpy.types.Operator):
         start_time = time()
 
         props = context.scene.acaccf
-        from . import mesh_to_gdl, mesh_to_symbol, xml_template, xml_lod
+        from . import mesh_to_gdl, mesh_to_symbol_new, xml_template, xml_lod
         
         def process_object(props, lod, is_placable, thumbnail_path, lod_number= None, ):
             if lod_number is not None:
@@ -291,7 +291,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             # create 2d script
             bpy.context.scene.render.engine = 'CYCLES'
             obj = bpy.context.active_object
-            symbol_script = mesh_to_symbol.run_script(props.save_path, start_obj=obj)
+            symbol_script = mesh_to_symbol_new.run_script(props.save_path, start_obj=obj)
 
             # create 3d script
             mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder, ob = obj)
@@ -480,9 +480,10 @@ class ACCTEST_OT_dummy(bpy.types.Operator):
     bl_label = "dummy"
 
     def execute(self, context):
-        from . import mesh_to_symbol
+        from . import mesh_to_symbol_new
 
-        mesh_to_symbol.run_script("C:\\tmp\\", bpy.context.active_object)
+        obj = bpy.context.active_object
+        mesh_to_symbol_new.run_script(start_obj=obj)
         return {"FINISHED"}
 
 classes = [
