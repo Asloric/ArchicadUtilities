@@ -28,7 +28,7 @@ def Filter_faces_by_vertex(bm, depsgraph, scene, mesh_z_size):
 
     bmesh.ops.delete(bm, geom=visible_faces, context='FACES')
 
-    return bm
+    return
 
 
 def assign_materials_to_object(obj):
@@ -49,7 +49,7 @@ def assign_materials_to_object(obj):
         obj.data.materials.append(material)
 
 
-def old_intersect_faces(obj, bm, z_size):
+def old_intersect_faces(obj, z_size):
   
     with bpy.context.temp_override(active_object = obj, selected_objects = {obj}):
 
@@ -119,14 +119,15 @@ def old_intersect_faces(obj, bm, z_size):
         
         bpy.ops.mesh.delete(type='EDGE')
 
+        
         # Mettre à jour la mesh avec les sélections
-        bm.select_flush(True)
-        bm.free()
+        # bm.select_flush(True)
+        # bm.free()
         
         # Repasser en mode objet pour terminer
         bpy.ops.object.mode_set(mode='OBJECT')
 
-
+        return bm
 
 def intersect_faces(obj, mesh, bm, z_size):
 
@@ -204,6 +205,7 @@ def Filter_faces_by_visibility(obj, bm, scene, depsgraph):
     bmesh.ops.delete(bm, geom=faces_to_keep, context='FACES')
 
 
+
 def run_script(start_obj:bpy.types.Object):
     # Get the mesh data
     # Ensure the mesh is up-to-date
@@ -227,14 +229,21 @@ def run_script(start_obj:bpy.types.Object):
         assign_materials_to_object(start_obj)
         
         Filter_faces_by_vertex(bm, depsgraph, scene, z_size)
-
-        old_intersect_faces(start_obj, bm, z_size)
-        #intersect_faces(start_obj, mesh, bm, z_size)
         
+        bm.to_mesh(mesh)
+        # bpy.ops.object.mode_set(mode='OBJECT')
+        # bm.free()
+        bm = old_intersect_faces(start_obj, z_size)
+        #intersect_faces(start_obj, mesh, bm, z_size)
+        bm = bmesh.new()
+        mesh.update()
+        bm.from_mesh(mesh)
         # mesh.update()
         Filter_faces_by_visibility(start_obj, bm, scene, depsgraph)
-    # bm.select_flush(True)
+
+        bm.to_mesh(mesh)
+        bm.free()
     # bpy.ops.object.mode_set(mode='OBJECT')
-    # bm.to_mesh(mesh)
+
     # bm.free()
     
