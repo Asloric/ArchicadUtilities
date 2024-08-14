@@ -2,7 +2,7 @@ import bpy
 import bmesh
 from mathutils import Vector
 
-def Filter_faces_by_vertex(mesh, depsgraph, scene, mesh_z_size):
+def filter_faces_by_vertex_visibility(mesh, depsgraph, scene, mesh_z_size):
     """Compute the visibility of a face on top-view relying on the vertex visibility.
     If at least one vertex is visible, the face is considered visible. 
     """
@@ -136,7 +136,7 @@ def intersect_faces(obj, z_size):
         return bm
 
 
-def Filter_faces_by_visibility(obj, scene, depsgraph):
+def filter_faces_by_restrictive_visibility(obj, scene, depsgraph):
 
     # Définir une fonction pour vérifier la visibilité d'une face en utilisant le raycasting
     def is_face_visible(face):
@@ -180,6 +180,58 @@ def Filter_faces_by_visibility(obj, scene, depsgraph):
     bm.free()
 
 
+def simplify_beautify_mesh(obj):
+
+    # Merge by distance to fuse everything
+    # Limited dissolve with low treshold to clean the cut lines
+
+    # Loop through each face.
+    # For each edge of the face
+    # detect if it's a cliff or if it's connected.
+    # if cliff, show it
+    # if connected, hide it. (store it in a list)
+    # For each vertice, check if coordinates are already in the list. 
+    # If both are, edge is connected. mark them for dissolve.
+
+    # set all vertices coordinates Z to 0.
+    # following code dissolves coplanar faces. adapt it to make the previous instructions and give it the list.
+
+        # # # import bpy
+        # # # import bmesh
+
+        # # # # Sélectionner l'objet actif
+        # # # obj = bpy.context.active_object
+        # # # mesh = obj.data
+
+        # # # # Créer un BMesh à partir du mesh de l'objet
+        # # # bm = bmesh.new()
+        # # # bm.from_mesh(mesh)
+
+        # # # # Suppose que nous voulons dissoudre toutes les arêtes intérieures des faces sélectionnées
+        # # # edges_to_dissolve = []
+
+        # # # # Sélectionner les arêtes qui sont partagées par deux faces coplanaires
+        # # # for edge in bm.edges:
+        # # #     if len(edge.link_faces) == 2:
+        # # #         face1, face2 = edge.link_faces
+        # # #         # Vérifie si les deux faces sont coplanaires
+        # # #         if face1.normal.dot(face2.normal) > 0.999:  # Tolérance pour la coplanarité
+        # # #             edges_to_dissolve.append(edge)
+
+        # # # # Dissoudre les arêtes sélectionnées
+        # # # if edges_to_dissolve:
+        # # #     bmesh.ops.dissolve_edges(bm, edges=edges_to_dissolve, use_verts=False)
+
+        # # # # Mettre à jour le mesh de l'objet avec les modifications
+        # # # bm.to_mesh(mesh)
+        # # # mesh.update()
+
+        # # # # Libérer le BMesh
+        # # # bm.free()
+
+
+    return
+
 def run_script(start_obj:bpy.types.Object):
     # Get the mesh data
     # Ensure the mesh is up-to-date
@@ -204,11 +256,11 @@ def run_script(start_obj:bpy.types.Object):
         # Assigner les matériaux à l'objet spécifié
         assign_materials_to_object(start_obj)
         
-        Filter_faces_by_vertex(mesh, depsgraph, scene, z_size)
+        filter_faces_by_vertex_visibility(mesh, depsgraph, scene, z_size)
         
         intersect_faces(start_obj, z_size)
 
-        Filter_faces_by_visibility(start_obj, scene, depsgraph)
+        filter_faces_by_restrictive_visibility(start_obj, scene, depsgraph)
 
     # bpy.ops.object.mode_set(mode='OBJECT')
     mesh.update()
