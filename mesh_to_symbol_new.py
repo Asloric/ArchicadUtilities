@@ -2,7 +2,7 @@ import bpy
 import bmesh
 from mathutils import Vector
 
-def Filter_faces_by_vertex(bm, depsgraph, scene, mesh_z_size):
+def Filter_faces_by_vertex(mesh, depsgraph, scene, mesh_z_size):
     """Compute the visibility of a face on top-view relying on the vertex visibility.
     If at least one vertex is visible, the face is considered visible. 
     """
@@ -13,6 +13,9 @@ def Filter_faces_by_vertex(bm, depsgraph, scene, mesh_z_size):
         ray_direction = Vector((0, 0, -1))  # Cast the ray downward
         result, location, normal, index, obj, matrix = scene.ray_cast(depsgraph, ray_origin, ray_direction)
         return result and (location - vertex_co).length < 0.001
+    
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
 
     visible_faces = []
     bmesh.ops.triangulate(bm, faces=bm.faces)
@@ -27,6 +30,9 @@ def Filter_faces_by_vertex(bm, depsgraph, scene, mesh_z_size):
             visible_faces.append(face)
 
     bmesh.ops.delete(bm, geom=visible_faces, context='FACES')
+
+    bm.to_mesh(mesh)
+    bm.free()
 
     return
 
@@ -49,7 +55,7 @@ def assign_materials_to_object(obj):
         obj.data.materials.append(material)
 
 
-def old_intersect_faces(obj, z_size):
+def intersect_faces(obj, z_size):
   
     with bpy.context.temp_override(active_object = obj, selected_objects = {obj}):
 
@@ -70,6 +76,7 @@ def old_intersect_faces(obj, z_size):
         bpy.ops.transform.translate(value=(0, 0, z_size*-0.5))
 
         # Créer un attribut personnalisé pour les nouvelles faces
+        bm = bmesh.new()
         bm = bmesh.from_edit_mesh(obj.data)
         new_edges_layer = bm.edges.layers.int.new("new_edges")
         for edge in bm.edges : 
@@ -108,8 +115,6 @@ def old_intersect_faces(obj, z_size):
         bpy.ops.mesh.intersect(mode='SELECT_UNSELECT', separate_mode="ALL", solver='EXACT')
         
         # Sélectionner toutes les faces marquées précédemment
-        faces_to_keep = [face for face in bm.faces if face.material_index == 1 ]
-        faces_to_delete = [face for face in bm.faces if face.material_index == 2 ]
         for edge in bm.edges:
             edge.select = True
         for face in bm.faces:
@@ -122,51 +127,16 @@ def old_intersect_faces(obj, z_size):
         
         # Mettre à jour la mesh avec les sélections
         # bm.select_flush(True)
-        # bm.free()
+        bmesh.update_edit_mesh(obj.data)
+        bm.free()
         
         # Repasser en mode objet pour terminer
         bpy.ops.object.mode_set(mode='OBJECT')
 
         return bm
 
-def intersect_faces(obj, mesh, bm, z_size):
 
-    for edge in bm.edges[:]:
-        v1, v2 = edge.verts
-        # Create new vertices
-        v1_new = bm.verts.new((v1.co.x, v1.co.y, z_size * -1))
-        v2_new = bm.verts.new((v2.co.x, v2.co.y, z_size * -1))
-        v3_new = bm.verts.new((v1.co.x, v1.co.y, z_size))
-        v4_new = bm.verts.new((v2.co.x, v2.co.y, z_size))
-        # Create new faces
-        face1 = bm.faces.new([v1_new, v2_new, v4_new, v3_new])
-        face1.material_index = 1
-    
-    bm.to_mesh(mesh)
-    mesh.update()
-    bpy.ops.object.mode_set(mode='EDIT')
-    # # Update mesh and assign material indices to original faces
-    bmesh.update_edit_mesh(mesh)
-    
-    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-    bpy.ops.mesh.select_all(action='SELECT')
-    # Intersect faces with the newly created cutting planes
-
-    bpy.ops.mesh.intersect(mode='SELECT_UNSELECT', separate_mode="ALL", solver='EXACT')
-    
-    return
-    # Sélectionner toutes les faces marquées précédemment
-    for edge in bm.edges:
-        edge.select = True
-    for face in bm.faces:
-        if face.material_index == 1:
-            for edge in face.edges:
-                edge.select = False
-    
-    bpy.ops.mesh.delete(type='EDGE')
-
-
-def Filter_faces_by_visibility(obj, bm, scene, depsgraph):
+def Filter_faces_by_visibility(obj, scene, depsgraph):
 
     # Définir une fonction pour vérifier la visibilité d'une face en utilisant le raycasting
     def is_face_visible(face):
@@ -198,12 +168,16 @@ def Filter_faces_by_visibility(obj, bm, scene, depsgraph):
                     return False
             return True
 
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
     # Filtrer les faces visibles
     faces_to_keep = [face for face in bm.faces if not is_face_visible(face)]
 
     # Supprimer toutes les faces du maillage
     bmesh.ops.delete(bm, geom=faces_to_keep, context='FACES')
 
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 def run_script(start_obj:bpy.types.Object):
@@ -215,11 +189,13 @@ def run_script(start_obj:bpy.types.Object):
     scene = bpy.context.scene
     depsgraph = bpy.context.evaluated_depsgraph_get()
 
+    # CAUTION ---------------------
+    # MAKE SURE THERE IS NO OTHER OBJECT IN THE SCENE AS IT CAN OCCLUDE THE TARGET AND AFFECT RESULTS
+    # CAUTION ---------------------
+
+
     mesh = start_obj.data
     mesh.update()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-
 
 
     z_size = start_obj.dimensions[2]
@@ -228,22 +204,13 @@ def run_script(start_obj:bpy.types.Object):
         # Assigner les matériaux à l'objet spécifié
         assign_materials_to_object(start_obj)
         
-        Filter_faces_by_vertex(bm, depsgraph, scene, z_size)
+        Filter_faces_by_vertex(mesh, depsgraph, scene, z_size)
         
-        bm.to_mesh(mesh)
-        # bpy.ops.object.mode_set(mode='OBJECT')
-        # bm.free()
-        bm = old_intersect_faces(start_obj, z_size)
-        #intersect_faces(start_obj, mesh, bm, z_size)
-        bm = bmesh.new()
-        mesh.update()
-        bm.from_mesh(mesh)
-        # mesh.update()
-        Filter_faces_by_visibility(start_obj, bm, scene, depsgraph)
+        intersect_faces(start_obj, z_size)
 
-        bm.to_mesh(mesh)
-        bm.free()
+        Filter_faces_by_visibility(start_obj, scene, depsgraph)
+
     # bpy.ops.object.mode_set(mode='OBJECT')
-
+    mesh.update()
     # bm.free()
     
