@@ -194,40 +194,81 @@ def simplify_beautify_mesh(obj):
     # If both are, edge is connected. mark them for dissolve.
 
     # set all vertices coordinates Z to 0.
-    # following code dissolves coplanar faces. adapt it to make the previous instructions and give it the list.
 
-        # # # import bpy
-        # # # import bmesh
+    import bpy
+    import bmesh
+    from mathutils import Vector
 
-        # # # # Sélectionner l'objet actif
-        # # # obj = bpy.context.active_object
-        # # # mesh = obj.data
+    def merge_and_clean_mesh(obj, distance_threshold=0.001, coplanar_threshold=0.01):
+        # Créer un BMesh à partir du mesh de l'objet
+        mesh = obj.data
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
 
-        # # # # Créer un BMesh à partir du mesh de l'objet
-        # # # bm = bmesh.new()
-        # # # bm.from_mesh(mesh)
+        # Fusionner les sommets proches
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=distance_threshold)
 
-        # # # # Suppose que nous voulons dissoudre toutes les arêtes intérieures des faces sélectionnées
-        # # # edges_to_dissolve = []
+        # Limiter la dissolution avec une faible tolérance pour nettoyer les lignes de coupe
+        bmesh.ops.dissolve_limit(bm, angle_limit=0.01, verts=bm.verts)
 
-        # # # # Sélectionner les arêtes qui sont partagées par deux faces coplanaires
-        # # # for edge in bm.edges:
-        # # #     if len(edge.link_faces) == 2:
-        # # #         face1, face2 = edge.link_faces
-        # # #         # Vérifie si les deux faces sont coplanaires
-        # # #         if face1.normal.dot(face2.normal) > 0.999:  # Tolérance pour la coplanarité
-        # # #             edges_to_dissolve.append(edge)
+        # Ensemble pour stocker les arêtes à dissoudre et celles à marquer comme "cliff"
+        edges_to_dissolve = set()
+        cliff_edges = set()
 
-        # # # # Dissoudre les arêtes sélectionnées
-        # # # if edges_to_dissolve:
-        # # #     bmesh.ops.dissolve_edges(bm, edges=edges_to_dissolve, use_verts=False)
+        # Dictionnaire pour stocker les coordonnées des sommets (arrondies pour comparaison)
+        vertex_coords_dict = {}
 
-        # # # # Mettre à jour le mesh de l'objet avec les modifications
-        # # # bm.to_mesh(mesh)
-        # # # mesh.update()
+        # Parcourir chaque face du maillage
+        for face in bm.faces:
+            for edge in face.edges:
+                if len(edge.link_faces) == 2:
+                    face1, face2 = edge.link_faces
+                    # Vérifie si les deux faces sont coplanaires
+                    if face1.normal.dot(face2.normal) > coplanar_threshold:
+                        # Marquer les arêtes connectées pour dissolution
+                        edges_to_dissolve.add(edge)
+                    else:
+                        # Marquer les arêtes comme des "cliffs"
+                        cliff_edges.add(edge)
+                else:
+                    # Marquer comme "cliff" si l'arête n'est connectée qu'à une face
+                    cliff_edges.add(edge)
 
-        # # # # Libérer le BMesh
-        # # # bm.free()
+                # Ajouter les coordonnées des sommets dans le dictionnaire
+                for vert in edge.verts:
+                    rounded_coords = tuple(round(c, 6) for c in vert.co)
+                    if rounded_coords in vertex_coords_dict:
+                        vertex_coords_dict[rounded_coords].append(vert)
+                    else:
+                        vertex_coords_dict[rounded_coords] = [vert]
+
+        # Vérifier si des sommets partagent les mêmes coordonnées (en Z) pour identifier les arêtes connectées
+        for coords, verts in vertex_coords_dict.items():
+            if len(verts) > 1:
+                for edge in bm.edges:
+                    if edge.verts[0] in verts and edge.verts[1] in verts:
+                        if edge not in cliff_edges:
+                            edges_to_dissolve.add(edge)
+
+        # Dissoudre les arêtes connectées
+        if edges_to_dissolve:
+            bmesh.ops.dissolve_edges(bm, edges=list(edges_to_dissolve), use_verts=False)
+
+        # Aplatir toutes les coordonnées des sommets en Z à 0
+        for vert in bm.verts:
+            vert.co.z = 0
+
+        # Mettre à jour le mesh avec les modifications
+        bm.to_mesh(mesh)
+        mesh.update()
+
+        # Libérer le BMesh
+        bm.free()
+
+    # Appliquer la fonction à l'objet sélectionné
+    obj = bpy.context.active_object
+    merge_and_clean_mesh(obj)
+
 
 
     return
