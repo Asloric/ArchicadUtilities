@@ -180,103 +180,34 @@ def filter_faces_by_restrictive_visibility(obj, scene, depsgraph):
     bm.free()
 
 
-def simplify_beautify_mesh(obj):
+def simplify_beautify_mesh(obj, distance_threshold=0.001):
 
-    # Merge by distance to fuse everything
-    # Limited dissolve with low treshold to clean the cut lines
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
 
-    # Loop through each face.
-    # For each edge of the face
-    # detect if it's a cliff or if it's connected.
-    # if cliff, show it
-    # if connected, hide it. (store it in a list)
-    # For each vertice, check if coordinates are already in the list. 
-    # If both are, edge is connected. mark them for dissolve.
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=distance_threshold)
 
-    # set all vertices coordinates Z to 0.
+    # Erase cut lines
+    bmesh.ops.dissolve_limit(bm, angle_limit=2, verts=bm.verts)
 
-    import bpy
-    import bmesh
-    from mathutils import Vector
+    for v in bm.verts:
+        v.co.z = 0
 
-    def merge_and_clean_mesh(obj, distance_threshold=0.001, coplanar_threshold=0.01):
-        # Créer un BMesh à partir du mesh de l'objet
-        mesh = obj.data
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
+    # Because why not? 
+    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
+    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
+    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
+    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
 
-        # Fusionner les sommets proches
-        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=distance_threshold)
-
-        # Limiter la dissolution avec une faible tolérance pour nettoyer les lignes de coupe
-        bmesh.ops.dissolve_limit(bm, angle_limit=0.01, verts=bm.verts)
-
-        # Ensemble pour stocker les arêtes à dissoudre et celles à marquer comme "cliff"
-        edges_to_dissolve = set()
-        cliff_edges = set()
-
-        # Dictionnaire pour stocker les coordonnées des sommets (arrondies pour comparaison)
-        vertex_coords_dict = {}
-
-        # Parcourir chaque face du maillage
-        for face in bm.faces:
-            for edge in face.edges:
-                if len(edge.link_faces) == 2:
-                    face1, face2 = edge.link_faces
-                    # Vérifie si les deux faces sont coplanaires
-                    if face1.normal.dot(face2.normal) > coplanar_threshold:
-                        # Marquer les arêtes connectées pour dissolution
-                        edges_to_dissolve.add(edge)
-                    else:
-                        # Marquer les arêtes comme des "cliffs"
-                        cliff_edges.add(edge)
-                else:
-                    # Marquer comme "cliff" si l'arête n'est connectée qu'à une face
-                    cliff_edges.add(edge)
-
-                # Ajouter les coordonnées des sommets dans le dictionnaire
-                for vert in edge.verts:
-                    rounded_coords = tuple(round(c, 6) for c in vert.co)
-                    if rounded_coords in vertex_coords_dict:
-                        vertex_coords_dict[rounded_coords].append(vert)
-                    else:
-                        vertex_coords_dict[rounded_coords] = [vert]
-
-        # Vérifier si des sommets partagent les mêmes coordonnées (en Z) pour identifier les arêtes connectées
-        for coords, verts in vertex_coords_dict.items():
-            if len(verts) > 1:
-                for edge in bm.edges:
-                    if edge.verts[0] in verts and edge.verts[1] in verts:
-                        if edge not in cliff_edges:
-                            edges_to_dissolve.add(edge)
-
-        # Dissoudre les arêtes connectées
-        if edges_to_dissolve:
-            bmesh.ops.dissolve_edges(bm, edges=list(edges_to_dissolve), use_verts=False)
-
-        # Aplatir toutes les coordonnées des sommets en Z à 0
-        for vert in bm.verts:
-            vert.co.z = 0
-
-        # Mettre à jour le mesh avec les modifications
-        bm.to_mesh(mesh)
-        mesh.update()
-
-        # Libérer le BMesh
-        bm.free()
-
-    # Appliquer la fonction à l'objet sélectionné
-    obj = bpy.context.active_object
-    merge_and_clean_mesh(obj)
-
-
+    bm.to_mesh(mesh)
+    mesh.update()
+    bm.free()
 
     return
 
+
 def run_script(start_obj:bpy.types.Object):
-    # Get the mesh data
-    # Ensure the mesh is up-to-date
-    # Create a BMesh representation
 
     # Prepare the scene for raycasting
     scene = bpy.context.scene
@@ -294,16 +225,15 @@ def run_script(start_obj:bpy.types.Object):
     z_size = start_obj.dimensions[2]
      
     with bpy.context.temp_override(active_object = start_obj, selected_objects = {start_obj}):
-        # Assigner les matériaux à l'objet spécifié
+        # Assign material to identify later on the faces created by the cutting planes
         assign_materials_to_object(start_obj)
-        
+        # Permissive face filter : If one vertex is visible, considered visible.
         filter_faces_by_vertex_visibility(mesh, depsgraph, scene, z_size)
-        
+        # Cut all the faces verticaly to avoid any partial overlap
         intersect_faces(start_obj, z_size)
-
+        # Restrictive face filter : if at least one point is not visible, considered invisible
         filter_faces_by_restrictive_visibility(start_obj, scene, depsgraph)
+        # Flatten and cleanup the mesh
+        simplify_beautify_mesh(start_obj, distance_threshold=0.001)
 
-    # bpy.ops.object.mode_set(mode='OBJECT')
-    mesh.update()
-    # bm.free()
     
