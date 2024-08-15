@@ -200,8 +200,8 @@ def simplify_beautify_mesh(obj, distance_threshold=0.001, coplanar_threshold=0.5
     # Erase cut lines
     bmesh.ops.dissolve_limit(bm, angle_limit=0.1, edges=bm.edges)
 
-    for v in bm.verts:
-        v.co.z = 0
+    # for v in bm.verts:
+    #     v.co.z = 0
 
     inner_edges = set()
     contour_edges = set()
