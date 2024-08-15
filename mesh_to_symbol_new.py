@@ -54,86 +54,94 @@ def assign_materials_to_object(obj):
     for i in range(0, 2):
         obj.data.materials.append(material)
 
+def pretreatment(obj):
+
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
+    # Sélectionner tout
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.intersect(mode='SELECT', separate_mode="ALL", solver='EXACT')
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    return
 
 def intersect_faces(obj, z_size):
-  
-    with bpy.context.temp_override(active_object = obj, selected_objects = {obj}):
 
-        # Passer en mode édition
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-        # Sélectionner tout
-        bpy.ops.mesh.select_all(action='SELECT')
-         
-        # Dupliquer tout
-        bpy.ops.mesh.duplicate()
-
-        # Applatir en Z (scale Z = 0)
-        bpy.ops.transform.resize(value=(1, 1, 0))
-
-
-        # Décale en Z pour que ça aille au plus bas du maillage original
-        bpy.ops.transform.translate(value=(0, 0, z_size*-0.5))
-
-        # Créer un attribut personnalisé pour les nouvelles faces
-        bm = bmesh.new()
-        bm = bmesh.from_edit_mesh(obj.data)
-        new_edges_layer = bm.edges.layers.int.new("new_edges")
-        for edge in bm.edges : 
-            if edge.select:
-                edge[new_edges_layer] = 1
-            else:
-                edge[new_edges_layer] = 0
+    # Passer en mode édition
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
+    # Sélectionner tout
+    bpy.ops.mesh.select_all(action='SELECT')
         
+    # Dupliquer tout
+    bpy.ops.mesh.duplicate()
+
+    # Applatir en Z (scale Z = 0)
+    bpy.ops.transform.resize(value=(1, 1, 0))
+
+
+    # Décale en Z pour que ça aille au plus bas du maillage original
+    bpy.ops.transform.translate(value=(0, 0, z_size*-0.5))
+
+    # Créer un attribut personnalisé pour les nouvelles faces
+    bm = bmesh.new()
+    bm = bmesh.from_edit_mesh(obj.data)
+    new_edges_layer = bm.edges.layers.int.new("new_edges")
+    for edge in bm.edges : 
+        if edge.select:
+            edge[new_edges_layer] = 1
+        else:
+            edge[new_edges_layer] = 0
+    
+
+
+        
+    bpy.ops.mesh.delete(type="ONLY_FACE")
+
+
+    # Sélectionner toutes les faces marquées précédemment
+    for edge in bm.edges:
+        if edge[new_edges_layer] == 1:
+            edge.select = True
+        else:
+            edge.select = False
+    
+
+    # Extrude vers le haut de la hauteur du maillage original
+    bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, z_size)})
+    
+    bpy.ops.mesh.select_linked()
+
+    for face in bm.faces:
+        if face.select:
+            face.material_index = 2
+        else:
+            face.material_index = 1
+        
+        
+    # Utiliser la commande bpy.ops.mesh.intersect(mode='SELECT', separate_mode="ALL")
+    bpy.ops.mesh.intersect(mode='SELECT_UNSELECT', separate_mode="ALL", solver='EXACT')
+    
+    # Sélectionner toutes les faces marquées précédemment
+    for edge in bm.edges:
+        edge.select = True
+    for face in bm.faces:
+        if face.material_index == 1:
+            for edge in face.edges:
+                edge.select = False
+    
+    bpy.ops.mesh.delete(type='EDGE')
 
     
-            
-        bpy.ops.mesh.delete(type="ONLY_FACE")
+    # Mettre à jour la mesh avec les sélections
+    # bm.select_flush(True)
+    bmesh.update_edit_mesh(obj.data)
+    bm.free()
+    
+    # Repasser en mode objet pour terminer
+    bpy.ops.object.mode_set(mode='OBJECT')
 
-
-        # Sélectionner toutes les faces marquées précédemment
-        for edge in bm.edges:
-            if edge[new_edges_layer] == 1:
-                edge.select = True
-            else:
-                edge.select = False
-        
-
-        # Extrude vers le haut de la hauteur du maillage original
-        bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, z_size)})
-        
-        bpy.ops.mesh.select_linked()
-
-        for face in bm.faces:
-            if face.select:
-                face.material_index = 2
-            else:
-                face.material_index = 1
-            
-            
-        # Utiliser la commande bpy.ops.mesh.intersect(mode='SELECT', separate_mode="ALL")
-        bpy.ops.mesh.intersect(mode='SELECT_UNSELECT', separate_mode="ALL", solver='EXACT')
-        
-        # Sélectionner toutes les faces marquées précédemment
-        for edge in bm.edges:
-            edge.select = True
-        for face in bm.faces:
-            if face.material_index == 1:
-                for edge in face.edges:
-                    edge.select = False
-        
-        bpy.ops.mesh.delete(type='EDGE')
-
-        
-        # Mettre à jour la mesh avec les sélections
-        # bm.select_flush(True)
-        bmesh.update_edit_mesh(obj.data)
-        bm.free()
-        
-        # Repasser en mode objet pour terminer
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        return bm
+    return bm
 
 
 def filter_faces_by_restrictive_visibility(obj, scene, depsgraph):
@@ -167,9 +175,10 @@ def filter_faces_by_restrictive_visibility(obj, scene, depsgraph):
 
                     return False
             return True
-
+    
     bm = bmesh.new()
     bm.from_mesh(obj.data)
+    bmesh.ops.triangulate(bm, faces=bm.faces)
     # Filtrer les faces visibles
     faces_to_keep = [face for face in bm.faces if not is_face_visible(face)]
 
@@ -180,7 +189,7 @@ def filter_faces_by_restrictive_visibility(obj, scene, depsgraph):
     bm.free()
 
 
-def simplify_beautify_mesh(obj, distance_threshold=0.001):
+def simplify_beautify_mesh(obj, distance_threshold=0.001, coplanar_threshold=0.5, angle_limit=5):
 
     mesh = obj.data
     bm = bmesh.new()
@@ -189,23 +198,34 @@ def simplify_beautify_mesh(obj, distance_threshold=0.001):
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=distance_threshold)
 
     # Erase cut lines
-    bmesh.ops.dissolve_limit(bm, angle_limit=2, verts=bm.verts)
+    bmesh.ops.dissolve_limit(bm, angle_limit=0.1, edges=bm.edges)
 
     for v in bm.verts:
         v.co.z = 0
 
-    # Because why not? 
-    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
-    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
-    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
-    bmesh.ops.dissolve_limit(bm, angle_limit=2, edges=bm.edges)
-
+    inner_edges = set()
+    contour_edges = set()
+    # for each edge of the bmesh, check if angle is above treshold.
+    # If edge is "hard", then it will be drawn. Add it to list to draw it later on.
+    for edge in bm.edges:
+        if len(edge.link_faces) == 2:
+            face1, face2 = edge.link_faces
+            # Check if faces are coplanar
+            if face1.normal.dot(face2.normal) < coplanar_threshold:
+                inner_edges.add(edge)
+        else:
+            contour_edges.add(edge)
+    
     bm.to_mesh(mesh)
     mesh.update()
     bm.free()
 
-    return
+    return inner_edges, contour_edges
 
+
+def mesh_to_GDL(obj, inner_edges, contour_edges):
+
+    return
 
 def run_script(start_obj:bpy.types.Object):
 
@@ -225,6 +245,8 @@ def run_script(start_obj:bpy.types.Object):
     z_size = start_obj.dimensions[2]
      
     with bpy.context.temp_override(active_object = start_obj, selected_objects = {start_obj}):
+        # Interesect all faces of the mesh to avoid problems in calculcation
+        pretreatment(start_obj)
         # Assign material to identify later on the faces created by the cutting planes
         assign_materials_to_object(start_obj)
         # Permissive face filter : If one vertex is visible, considered visible.
@@ -234,6 +256,9 @@ def run_script(start_obj:bpy.types.Object):
         # Restrictive face filter : if at least one point is not visible, considered invisible
         filter_faces_by_restrictive_visibility(start_obj, scene, depsgraph)
         # Flatten and cleanup the mesh
-        simplify_beautify_mesh(start_obj, distance_threshold=0.001)
+        inner_edges, contour_edges = simplify_beautify_mesh(start_obj, distance_threshold=0.001, coplanar_threshold=0.5, angle_limit=5)
+        # Convert the faces to hatch and edges to lines
+        symbol_script = mesh_to_GDL(start_obj, inner_edges, contour_edges)
 
+    return symbol_script
     
