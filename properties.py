@@ -1,17 +1,24 @@
 import bpy, inspect
 from . import utils
 
-# This file handles the properties of objects. Those properties are the mirror of what can be seen in the "principal" tab in archicad. 
-       
+# This file handles the properties of objects. Those properties are the mirror of what can be seen in the "principal" tab in archicad.
+# There are two property groups:
+#   AC_export_properties (scene.acaccf): export settings (name, path, LOD, smooth angle)
+#   AC_PropertyGroup_props (scene.archicad_converter_props): user-defined Archicad parameters
+
 class AC_export_properties(bpy.types.PropertyGroup):
 
     object_name: bpy.props.StringProperty(name="Object name", default="")
+    # is_placable: controls the XML IsPlaceable attribute. Non-placeable objects don't appear in AC's search dialog.
     is_placable: bpy.props.BoolProperty(default=True, description="Will the object be viewable in search popup")
+    # smooth_angle: dihedral angle threshold for smooth shading. Edges below this angle are smooth in GDL.
     smooth_angle: bpy.props.FloatProperty(name="smooth angle", default=1.0, subtype="ANGLE", description="Below this angle, edges will be smooth if not marked as sharp.")
     save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\")
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
+    # BUG: lod_0 is defined twice. The second definition overwrites the first in Python class body.
+    # This is harmless in practice (both definitions are identical) but is a copy-paste error.
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
 
 
@@ -22,10 +29,13 @@ class AC_export_properties(bpy.types.PropertyGroup):
         del bpy.types.Scene.acaccf
 
 
+# AC_single_prop: Represents a single user-defined Archicad object parameter.
+# Each instance maps directly to an XML parameter element in the output (e.g. <Length Name="width">).
+# Supported types mirror the Archicad GDL parameter type system.
 class AC_single_prop(bpy.types.PropertyGroup):
     def prop_enforce_name(self, context):
+        """Auto-sanitize the identifier when it changes: clean special chars and ensure uniqueness."""
         def avoide_duplicate(identifier, identifier_suffix):
-            # create the name, then check if it exists
             if identifier_suffix > 0:
                 new_identifier = identifier + "_" + str(identifier_suffix)
             else:
@@ -37,7 +47,9 @@ class AC_single_prop(bpy.types.PropertyGroup):
                     return avoide_duplicate(identifier, identifier_suffix)
 
             return new_identifier
-        
+
+        # Guard against infinite recursion: inspect.stack() depth > 2 means we're inside
+        # an update callback triggered by setting self.identifier below - skip in that case.
         if len(inspect.stack()) <= 2:
             name_suffix = 0
             new_name = utils.cleanString(self.identifier)
@@ -77,11 +89,19 @@ class AC_single_prop(bpy.types.PropertyGroup):
     Title: bpy.props.StringProperty(name="value")
     Separator: bpy.props.StringProperty(name="value")
 
+    # These flags map to Archicad GDL parameter flags in the XML <Flags> section:
+    # hide_flag  → ParFlg_Hidden  (not visible in Archicad's parameters dialog)
+    # child_flag → ParFlg_Child   (indented under the previous non-child parameter)
+    # bold_flag  → ParFlg_BoldName (bold label in the parameters dialog)
+    # unique_flag→ ParFlg_Unique  (exact purpose in AC unclear)
     hide_flag: bpy.props.BoolProperty(name="hide", description="hide from interface")
     child_flag: bpy.props.BoolProperty(name="child", description="is child of above attribute")
     bold_flag: bpy.props.BoolProperty(name="bold", description="text will appear bold")
     unique_flag: bpy.props.BoolProperty(name="unique", description="I don't know.")
 
+# AC_PropertyGroup_props: Scene-level container for all user-defined Archicad parameters.
+# It is registered as bpy.types.Scene.archicad_converter_props and also has a load_post
+# handler to re-populate mandatory defaults when a .blend file is opened.
 class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 
     def add_handler(function, handler):
@@ -92,9 +112,16 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
         if function in handler:
             handler.remove(function)
 
-
-
     def ensure_default_props(self, context):
+        """Ensure mandatory Archicad drawing parameters always exist in the collection.
+
+        These are required by the 2D script in xml_template.py (hardcoded references):
+          penAttribute_1, lineTypeAttribute_1, fillAttribute_1, fillbgpen_1, fillfgpen_1
+        Plus two metadata fields: product_reference, old_GUID.
+
+        Called: (a) from operators.py invoke(), (b) as a load_post handler on file open,
+                (c) on active_user_index change (as an update callback side-effect).
+        """
         preferences = bpy.context.preferences.addons[__package__].preferences
         # Ensure the default props are still in the list
 
@@ -154,16 +181,21 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
             prop.name = "ancien GUID"
             prop.identifier = "old_GUID"
             prop.ac_type = "String"
+            # Leave String empty by default. When filled with a valid GUID, xml_template.py
+            # uses it as MainGUID instead of generating a new timestamp-based one.
             prop.String = ""
 
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)
+    # active_user_index update fires ensure_default_props as a side-effect whenever
+    # the user selects a different parameter in the UI list.
     active_user_index: bpy.props.IntProperty(update=ensure_default_props)
 
     def register():
         bpy.types.Scene.archicad_converter_props = bpy.props.PointerProperty(type=AC_PropertyGroup_props)
+        # Register load_post handler so defaults are restored when any .blend file is opened.
         AC_PropertyGroup_props.add_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
-    
+
     def unregister():
         AC_PropertyGroup_props.remove_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
         del bpy.types.Scene.archicad_converter_props
@@ -172,12 +204,15 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 
 
 
+# AC_UL_props: Custom UIList renderer for the parameter collection.
+# Mandatory system parameters are shown with their fixed name (non-editable label).
+# User-added parameters show their editable identifier field.
 class AC_UL_props(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         if item.name in ["Stylo lignes", "Type de lignes", "Hachure", "Stylo Fond", "Stylo Premier plan", "ancien GUID", "Reference produit"]:
-            layout.label(text=item.name)
+            layout.label(text=item.name)  # Fixed system parameters - name-only display
         else:
-            layout.prop(item, "identifier", emboss=False, text="")
+            layout.prop(item, "identifier", emboss=False, text="")  # User parameters - editable identifier
         layout.separator()
 
 

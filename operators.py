@@ -5,6 +5,10 @@ from time import time
 import shutil
 from . import properties, utils
 
+# Creates an Archicad-style preview image using Cycles rendering.
+# The thumbnail is stored in the texture folder alongside texture images.
+# A dedicated render scene ("AC_render_scene") is created and reused to avoid
+# polluting the user's working scene.
 def create_thumbnail(object, object_name, save_path):
     preferences = bpy.context.preferences.addons[__package__].preferences
     # Switch to scene
@@ -32,6 +36,9 @@ def create_thumbnail(object, object_name, save_path):
     #         bpy.context.scene.camera.rotation_euler = preferences.camera_angle
 
     # setup camera
+    # BUG: Walrus operator precedence error on next line.
+    # `camera_data := (bpy.data.cameras.get(...) is not None)` assigns a bool, not the camera datablock.
+    # Should be: `if (camera_data := bpy.data.cameras.get("AC_Camera_3D")) is not None:`
     if bpy.context.scene.camera is None:
         if camera_data:= bpy.data.cameras.get("AC_Camera_3D") is not None:
             if bpy.data.objects.get("AC_Camera_3D") is None: 
@@ -98,6 +105,10 @@ def create_thumbnail(object, object_name, save_path):
     render_scene.collection.objects.unlink(object)
     bpy.context.window.scene = current_scene
 
+# ACACCF_OT_apply: The MANDATORY first step before exporting.
+# It duplicates the object(s), applies all modifiers, joins multi-object selections,
+# and optionally bakes a LOD variant by reducing subdivision surface levels to 0.
+# The result is named after the .blend file (e.g., "MyChair" and "MyChair_LOD_1").
 class ACACCF_OT_apply(bpy.types.Operator):
     bl_idname = "acaccf.apply"
     bl_label = "Apply object"
@@ -105,6 +116,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
 
     merge_by_distance: bpy.props.BoolProperty(default=True, name="merge by distance", description="Merge vertices by distance")
     delete_loose: bpy.props.BoolProperty(default=True, name="delete_loose", description="Delete loose geometry")
+    # When True, a second pass is run with SubSurf level forced to 0, creating a coarse LOD sibling.
     lods: bpy.props.BoolProperty(default=True, name="Compute LODs", description="If subdivision surface is used, also compute a version with level 0")
     
 
@@ -135,9 +147,10 @@ class ACACCF_OT_apply(bpy.types.Operator):
             # apply modifiers on every object in the selection
             bpy.ops.object.duplicate(linked=False)
             object_list = context.selected_objects
-            for obj in object_list:            
+            for obj in object_list:
                 apply_modifiers(obj, is_lod)
 
+            # Join all selected objects into one mesh, then clean it up.
             bpy.ops.object.join()
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             bpy.ops.object.mode_set(mode='EDIT')
@@ -145,6 +158,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
                 bpy.ops.mesh.remove_doubles(use_unselected=True, threshold=0.001)
             if self.delete_loose:
                 bpy.ops.mesh.delete_loose(use_faces=True)
+            # Split non-planar faces (1° tolerance). GDL requires planar polygons.
             bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
             bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -152,13 +166,16 @@ class ACACCF_OT_apply(bpy.types.Operator):
         initial_object_list = context.selected_objects
         initial_active_object = context.active_object
         if self.lods:
+            # First pass: LOD variant (coarse - SubSurf level 0). Named "filename_LOD_1".
             compute_lod(is_lod = True)
             context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "_LOD_1")
+            # Restore original selection for the full-detail pass.
             for obj in context.selected_objects:
                 obj.select_set(False)
             for obj in initial_object_list:
                 obj.select_set(True)
             bpy.context.view_layer.objects.active = initial_active_object
+        # Second pass: full-detail. Named after the .blend file.
         compute_lod(is_lod = False)
         context.active_object.name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "")
         return {"FINISHED"}
@@ -233,6 +250,14 @@ class ACACCF_OT_apply_modifiers(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# ACACCF_OT_export: Main export operator. Full pipeline:
+#   1. Duplicate active object
+#   2. Split non-planar faces
+#   3. Generate 2D symbol (mesh_to_symbol_new) - currently returns None, falls back to PROJECT2
+#   4. Generate 3D GDL script (mesh_to_gdl)
+#   5. Render Cycles thumbnail
+#   6. Build XML (xml_template or xml_lod for LOD wrapper)
+#   7. Call LP_XMLConverter.exe to compile .xml + textures → .gsm library part
 class ACACCF_OT_export(bpy.types.Operator):
     bl_idname = "acaccf.export"
     bl_label = "export"
@@ -289,8 +314,13 @@ class ACACCF_OT_export(bpy.types.Operator):
             bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
 
             # create 2d script
+            # NOTE: render engine is set to CYCLES here before 2D symbol generation.
+            # This is needed because mesh_to_symbol_new uses ray_cast which may depend on evaluated depsgraph.
             bpy.context.scene.render.engine = 'CYCLES'
             obj = bpy.context.active_object
+            # BUG: run_script signature is run_script(start_obj), but props.save_path is passed as
+            # the first positional argument alongside start_obj as keyword. This will raise TypeError.
+            # Also, run_script currently returns None (no GDL output yet); xml_template falls back to PROJECT2.
             symbol_script = mesh_to_symbol_new.run_script(props.save_path, start_obj=obj)
 
             # create 3d script
@@ -299,7 +329,11 @@ class ACACCF_OT_export(bpy.types.Operator):
             #get back to object mode
             bpy.ops.object.mode_set(mode='OBJECT')
             
-            # Get the list of materials for AC override
+            # Build lists of material/surface names for Archicad parameter overrides.
+            # Each Blender material becomes:
+            #   - An Archicad "Material" parameter: sf_<matname>  (user can override surface in AC)
+            #   - A GDL material name: material_<matname>  (defined in the 3D script)
+            # The GDL script checks: IF sf_X = 0 THEN use embedded material ELSE use AC override.
             object_materials = []
             object_surfaces = []
             for material in lod.data.materials:
@@ -340,7 +374,9 @@ class ACACCF_OT_export(bpy.types.Operator):
                 target_file.write(xml)
             print("file saved to " + target_filepath)
 
-        # Create textures folder
+        # Create textures folder alongside the output .xml/.gsm files.
+        # LP_XMLConverter requires textures in a separate folder (passed via -img flag).
+        # NOTE: thumbnail preview images are also stored here (same folder as textures).
         texture_folder = props.save_path + "textures"
         if not os.path.exists(props.save_path + "textures"):
             os.mkdir(texture_folder)
@@ -351,8 +387,9 @@ class ACACCF_OT_export(bpy.types.Operator):
         preferences = bpy.context.preferences.addons[__package__].preferences
         lp_xmlconverter_path = preferences.LP_XMLConverter
         ac_version = preferences.ac_version
-        
-        # Process the meshed if lod or single
+
+        # LOD export: processes lod_0 (detailed) and lod_1 (coarse) separately,
+        # each becomes its own .gsm, then a LOD wrapper .gsm delegates between them.
         if props.export_lod and props.lod_0 and props.lod_1:
             i = 0
             for lod in [props.lod_0, props.lod_1]:
@@ -383,7 +420,8 @@ class ACACCF_OT_export(bpy.types.Operator):
     def invoke(self, context, event):
         props = context.scene.acaccf
 
-        # If multiple objects are selected, switch to lod mode. Assign lods based on face count.
+        # Auto-detect LOD mode: if 2 objects selected, assign them as LOD0/LOD1 by polygon count.
+        # Higher poly count = LOD0 (detailed), lower = LOD1 (coarse).
         if len(context.selected_objects) > 1:
             obj_a = context.selected_objects[0]
             obj_b = context.selected_objects[1]
@@ -398,15 +436,16 @@ class ACACCF_OT_export(bpy.types.Operator):
                 props.export_lod = True
         else:
             props.lod_0 = context.active_object
-        
+
         if props.object_name == "":
-            # Set the blender's file name as object name. 
+            # Default object name = blend filename (no extension).
             props.object_name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "")
 
         if props.save_path == "C:\\" or not props.save_path:
-            # Set the blender's file name as object name. 
+            # Default save path = same folder as the blend file.
             props.save_path = os.path.dirname(bpy.context.blend_data.filepath) + "\\"
-        
+
+        # Ensure mandatory Archicad parameters (pen, line type, hatch etc.) exist before the dialog.
         properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)
         
@@ -430,6 +469,8 @@ class AC_OT_property_remove(bpy.types.Operator):
     def poll(cls, context):
         prop = context.scene.archicad_converter_props
         if prop.active_user_index < len(prop.collection):
+            # Prevent removal of the three mandatory Archicad drawing attributes.
+            # The XML template hardcodes references to these identifiers in the 2D script.
             if not prop.collection[prop.active_user_index].name in ["PenAttribute_1", "lineTypeAttribute_1", "fillAttribute_1"]:
                 return True
 
@@ -475,6 +516,7 @@ class AC_OT_property_down(bpy.types.Operator):
         return {"FINISHED"} 
 
 
+# Debug/test operator for the 2D symbol generator. Not exposed in the UI panels.
 class ACCTEST_OT_dummy(bpy.types.Operator):
     bl_idname = "acaccf.dummy"
     bl_label = "dummy"

@@ -1,20 +1,32 @@
 import datetime
 import bpy
 
+# xml_lod.py: Generates the Archicad XML for an LOD WRAPPER object.
+#
+# When exporting with LOD enabled, three .gsm files are created:
+#   objectName_LOD0.gsm  - Detailed mesh (from xml_template.py)
+#   objectName_LOD1.gsm  - Coarse mesh (from xml_template.py)
+#   objectName.gsm       - LOD wrapper (this file) - delegates to LOD0 or LOD1 based on macro_choose
+#
+# The wrapper's 3D/2D scripts call "macro[_macro_choose]" which resolves to one of the child objects.
+# macro array mapping (from ParamSection):
+#   macro[1] = LOD1 (Very Simple)
+#   macro[2] = LOD1 (Simple)
+#   macro[3] = LOD0 (Detailed)
+#   macro[4] = MVO (based on Model View Options via libraryglobal)
+#
+# The Script_PR declares FILE_DEPENDANCE to ensure child objects are packed together.
+
 def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bound_z:float, surfaces = [], materials = [], ac_version:int=43, thumbnail_path=None):
 	'''
-	object_index: 12 char, a-f, A-F, 0-9
+	object_name: the base name; child objects are expected at objectName_LOD0 and objectName_LOD1
 	is_placable: boolean. appears or not in the search
-	symbol_script: returned by mesh_to_symbol()
-	mesh_script: return by mesh_to_gdl()
-	bound_x: X max dimension of object
-	bound_y: Y max dimension of object
-	bound_z: Z max dimension of object
-	ac_version: Archicad version. Lookup online for correct number. Default AC25
+	bound_x/y/z: bounding box dimensions (from the LOD0 detailed mesh)
+	ac_version: Archicad internal version code (40=AC23, 41=AC24, 43=AC25, 44=AC26)
 	'''
 	date = datetime.datetime.now()
 
-	# Defines the attrubues parameters
+	# NOTE: eval() is used to dynamically read the property value by type name (see xml_template.py note).
 	attributes_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
 	for propattr in bpy.context.scene.archicad_converter_props.collection:
@@ -53,6 +65,7 @@ def get_xml(object_name:str, is_placable:bool, bound_x:float, bound_y:float, bou
 	else:
 		thumbnail = ''
 
+	# The LOD wrapper always uses "70DA" in segment 3 of its GUID (vs "70D0"/"70D1" for the children).
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="AC0000CF-0000-70DA-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
 <Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
@@ -124,6 +137,8 @@ stMacro_choose[4] = 'MVO'
 
 <Script_PR SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
+! FILE_DEPENDANCE tells Archicad that this object requires LOD1 and LOD0 to exist in the same library.
+! If the child objects are missing, the wrapper will fail to display.
 FILE_DEPENDANCE "{object_name}_LOD1", "{object_name}_LOD0"]]>
 </Script_PR>
 
@@ -244,6 +259,9 @@ hideparameter "macro", "macro_choose"
 			<Description><![CDATA[""]]></Description>
 			<Value>4</Value>
 		</Integer>
+		<!-- macro array: maps macro_choose values to child object names.
+		     1=Very Simple → LOD1 (coarse), 2=Simple → LOD1, 3=Detailed → LOD0 (full detail).
+		     Row indices are 1-based (GDL array convention). -->
 		<String Name="macro">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="3" SecondDimension="0">

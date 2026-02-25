@@ -1,3 +1,24 @@
+# local_dict.py - GDL reserved keyword list.
+#
+# Purpose: Provides the `gdl_keywords` list used by utils.cleanString() to detect
+# identifier collisions with GDL built-in keywords. If a user-defined parameter name
+# matches any entry in this list, utils.py prepends "bl_" to avoid a GDL parse error.
+#
+# This list covers the full GDL keyword set as of Archicad 26:
+#   - Control flow: FOR/TO/STEP/NEXT, WHILE/ENDWHILE, REPEAT/UNTIL, IF/THEN/ELSE/ENDIF,
+#                   GOTO, GOSUB, RETURN, END, EXIT
+#   - Math functions: ABS, CEIL, INT, FRA, ROUND_INT, SGN, SQR, COS, SIN, TAN, etc.
+#   - String functions: STR, STW, STRLEN, STRSTR, STRSUB, STRTOUPPER, STRTOLOWER
+#   - 3D primitives: BLOCK, BRICK, CYLIND, SPHERE, CONE, PRISM_, SLAB_, EXTRUDE, etc.
+#   - 3D mesh topology: VERT, TEVE, VECT, EDGE, PGON, BODY, BASE
+#   - 2D commands: POLY, POLY_, RECT_, CIRCLE, ARC, LINE, LIN_
+#   - Transform commands: ADDX, ADDY, ADDZ, ADD, MULX, MULY, MULZ, MUL, ROTX, ROTY, ROTZ
+#   - Material/surface: MATERIAL, DEFINE MATERIAL, DEFINE TEXTURE, SET, PEN
+#   - UI script commands: UI_DIALOG, UI_BUTTON, UI_INFIELD, UI_LISTFIELD, etc.
+#   - I/O: OPEN, INPUT, OUTPUT, CLOSE
+#   - GDL operators: AND, OR, EXOR, NOT, MOD
+#   - Misc: IND, REQ, REQUEST, CALL, RETURNED_PARAMETERS, DIM, PUT, GET, etc.
+
 gdl_keywords = [
 "TEXTURE",
 "FILE_DEPENDENCE",

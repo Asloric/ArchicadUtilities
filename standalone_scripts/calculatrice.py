@@ -1,4 +1,16 @@
-# Désactive l'antivirus pour compiler:
+# calculatrice.py - Standalone multi-line formula calculator with cascade evaluation.
+# NOT part of the Blender addon - this is an independent utility tool.
+# Compiled to a .exe via PyInstaller (see Calculatrice.spec).
+#
+# Features:
+#   - Tkinter dark-theme GUI: formula editor (left panel) + results panel (right)
+#   - Each line is evaluated as a Python expression via eval()
+#   - `ans(x)` syntax: references the result of line x (0-based)
+#   - Lines starting with +/-/*/^ auto-prepend ans(prev_line) (chaining shortcut)
+#   - Cascade recalculation: changing any line re-evaluates all subsequent lines
+#   - Syntax highlighting: functions (yellow), parentheses (gold), operators (white), comments (green)
+#
+# Build command (disable antivirus first - PyInstaller triggers false positives):
 # pyinstaller calculatrice.py --noconsole --hidden-import=tkinter --hidden-import=regex --onefile
 import tkinter as tk
 import re
@@ -147,11 +159,11 @@ class MagicCalculator(tk.Tk):
         return re.match(r"^[\+\-\*/\^]", formula)
 
     def replace_ans(self, formula, line_number):
-        # Vérifier si la formule commence par un opérateur mathématique
+        # If a line starts with an operator (+,-,*,/,^), prepend ans(prev_line) so it chains.
         if self.check_for_operator(formula):
             formula = f"ans({line_number-1})" + formula
 
-        # Remplacer toutes les occurrences de "ans(x)" par les résultats correspondants
+        # Substitute all ans(x) tokens with the actual numeric results before eval().
         for i in range(len(self.results)):
             formula = formula.replace(f"ans({i})", str(self.results[i]))
         return formula

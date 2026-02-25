@@ -1,3 +1,16 @@
+# Tiff_to_xyz.py - Standalone terrain heightmap converter.
+# NOT part of the Blender addon. Run directly as a Python script.
+#
+# Purpose: Convert a GeoTIFF or heightmap TIFF image to an XYZ point cloud text file
+# which can be imported into Archicad or other tools as a terrain surface.
+#
+# Strategy:
+#   1. Load TIFF as a numpy array (may contain float elevations or 16-bit values)
+#   2. Normalize pixel values 0-255 (handles nodata sentinel -99999 → 0)
+#   3. Gaussian blur + diff = edge detection (high-change areas = important terrain features)
+#   4. Write edge pixels + a sparse grid (every gridmin pixels) to reduce total point count
+#
+# NOTE: Paths are hardcoded below. Change before use.
 import os
 import math
 import numpy as np
@@ -9,8 +22,8 @@ import PIL
 from PIL import Image
 from PIL import ImageFilter
 from PIL import ImageChops
-threshold = 1
-gridmin = 250
+threshold = 1    # Pixel difference > threshold → classified as edge point (included in output)
+gridmin = 250    # Sparse grid step: output one point every gridmin pixels for terrain base coverage
 
 
 FilePath = 'D:\\parcelle.TIF'
@@ -22,6 +35,7 @@ Newlist = []
 
 
 def convert(img, target_type_min, target_type_max, target_type):
+    # Replace nodata sentinel value -99999 (common in GIS rasters) with 0 before normalizing.
     for x in range(0,img.shape[1]):
         for y in range(0,img.shape[0]):
             if img[y,x] == -99999.0:
@@ -29,7 +43,7 @@ def convert(img, target_type_min, target_type_max, target_type):
     imin = img.min()
     print(imin)
     imax = img.max()
-
+    # Linear normalization: maps [imin, imax] → [target_type_min, target_type_max]
     a = (target_type_max - target_type_min) / (imax - imin)
     b = target_type_max - a * imax
     new_img = (a * img + b).astype(target_type)

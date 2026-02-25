@@ -1,3 +1,23 @@
+# mesh_to_symbol.py - SUPERSEDED 2D symbol generator using Freestyle SVG rendering.
+#
+# Status: No longer imported by operators.py. Replaced by mesh_to_symbol_new.py.
+# Kept as reference - it is the only implementation that actually returns GDL output.
+#
+# Approach (Freestyle/SVG - quite different from the raycasting approach in mesh_to_symbol_new):
+#   1. Create a dedicated "AC_render_scene" with Freestyle + SVG export
+#   2. Position an orthographic camera directly above the object
+#   3. Render silhouette lines only → output as SVG file
+#   4. Import SVG back into Blender as curves, convert to mesh geometry
+#   5. mesh_to_hatch() converts polygon faces → POLY2_B GDL (filled hatches)
+#   6. mesh_to_lines() converts edges → POLY2 GDL (line outlines)
+#   7. Returns a GDL script string (UNLIKE mesh_to_symbol_new which returns None)
+#
+# History: The operators.py call was `mesh_to_symbol_new.run_script(props.save_path, start_obj=obj)`
+# which matches THIS file's `run_script(filepath, start_obj)` signature. When mesh_to_symbol_new
+# was written, its signature was changed to just `run_script(start_obj)` but the operator
+# call was not updated, causing the current TypeError bug.
+#
+# Dependency: requires Blender's built-in "render_freestyle_svg" addon to be enabled.
 import bpy
 import addon_utils
 import bmesh
@@ -6,10 +26,11 @@ from mathutils import Vector
 
 preferences = bpy.context.preferences.addons[__package__].preferences
 current_scene = None
-dissolve_angle = 10 * (3.1459/180)
-merge_distance = 0.00075
+dissolve_angle = 10 * (3.1459/180)  # 10° threshold for dissolving near-collinear SVG import edges
+merge_distance = 0.00075             # Vertex merge distance for cleaning up SVG-imported geometry
 
 
+    # Reference links used during development:
     # https://blender.stackexchange.com/questions/254419/how-to-export-object-outline-as-dwg-or-svg-lines-without-modifying-mesh
     # https://www.youtube.com/watch?v=ji06I_KalEw
     # https://blender.stackexchange.com/questions/155275/how-to-set-freestyle-line-set-setting-using-python
@@ -190,6 +211,11 @@ def create_mesh(render_scene, camera, frame_number, filepath, start_obj:bpy.type
 
 
 def mesh_to_hatch(obj):
+    """Convert polygon faces (from SVG fill areas) to GDL POLY2_B commands.
+    POLY2_B = 2D polygon with fill. Status 33 = edge visible + end-of-contour.
+    Final vertex uses status -1 to close the polygon.
+    Uses fillbgpen_1/fillfgpen_1 parameters defined in the object's properties.
+    """
     mesh = obj.data
     bm = bmesh.from_edit_mesh(mesh)
     bmesh.ops.dissolve_limit(bm, angle_limit=dissolve_angle, verts=bm.verts, edges=bm.edges)
@@ -197,10 +223,11 @@ def mesh_to_hatch(obj):
 
     for face in bm.faces:
         max_n_loop = len(face.loops)
+        # POLY2_B format: POLY2_B n+1, status, fg_pen, bg_pen, x1, y1, s1, x2, y2, s2, ..., xclose, yclose, -1
         command_string = f"POLY2_B {max_n_loop+1}, 2, fillfgpen_1, fillbgpen_1, \n"
         for loop in face.loops:
             command_string += f"{str('%.4f' % loop.vert.co[0])}, {str('%.4f' % loop.vert.co[1])}, 33,\n"
-        # close polygon
+        # Close the polygon by repeating the first vertex with status -1.
         command_string += f"{str('%.4f' % face.loops[0].vert.co[0])}, {str('%.4f' % face.loops[0].vert.co[1])}, -1\n"
         script_part += command_string
     bm.free()
@@ -208,6 +235,11 @@ def mesh_to_hatch(obj):
 
 
 def mesh_to_lines(obj):
+    """Convert edges (from SVG outline curves) to GDL POLY2 commands.
+    POLY2 = simple 2D polyline. Status 1 = visible line.
+    Each edge (2 verts) becomes a separate POLY2 command.
+    The trailing comma is removed from the last vertex line.
+    """
     me = obj.data
     bm = bmesh.from_edit_mesh(me)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=merge_distance)
@@ -219,7 +251,7 @@ def mesh_to_lines(obj):
         command_string = f"POLY2 {max_n_loop}, 1,\n"
         for vert in edge.verts:
             command_string += f"{str('%.4f' % vert.co[0])}, {str('%.4f' % vert.co[1])},\n"
-        # close polygon
+        # Remove the trailing comma from the last vertex (GDL syntax requires no trailing comma).
         command_string = command_string[:-2] + "\n"
         script_part += command_string
     bm.free()
