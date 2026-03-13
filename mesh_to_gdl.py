@@ -209,7 +209,7 @@ DEFINE MATERIAL "material_{mat_name}" 21, 1, 1, 1, 1, 1, 0.25, 0, 0, 0, 0, 0, IN
                 ior = principled_node.inputs[3].default_value
                 alpha = principled_node.inputs[4].default_value
                 emission = principled_node.inputs[26].default_value
-                emission_str = principled_node.inputs[27].default_value
+                emission_str = principled_node.inputs[28].default_value
 
                 iorb = (ior-1)/(ior+1)
                 spec = (iorb*iorb)/0.08

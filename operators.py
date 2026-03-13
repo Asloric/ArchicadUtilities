@@ -5,8 +5,22 @@ from time import time
 import shutil
 from . import properties, utils
 
+
+def _get_addon_preferences(context=None):
+    context = context or bpy.context
+    addon = context.preferences.addons.get(__package__)
+    return addon.preferences if addon else None
+
+
+def _mesh_merge_by_distance(**kwargs):
+    if hasattr(bpy.ops.mesh, "merge_by_distance"):
+        return bpy.ops.mesh.merge_by_distance(**kwargs)
+    return bpy.ops.mesh.remove_doubles(**kwargs)
+
 def create_thumbnail(object, object_name, save_path):
-    preferences = bpy.context.preferences.addons[__package__].preferences
+    preferences = _get_addon_preferences()
+    if preferences is None or not preferences.create_thumbnail:
+        return
     # Switch to scene
     current_scene = bpy.context.scene
     if not bpy.data.scenes.get("AC_render_scene"):
@@ -33,7 +47,8 @@ def create_thumbnail(object, object_name, save_path):
 
     # setup camera
     if bpy.context.scene.camera is None:
-        if camera_data:= bpy.data.cameras.get("AC_Camera_3D") is not None:
+        camera_data = bpy.data.cameras.get("AC_Camera_3D")
+        if camera_data is not None:
             if bpy.data.objects.get("AC_Camera_3D") is None: 
                 camera_object = bpy.data.objects.new("AC_Camera_3D", camera_data)
             else:
@@ -86,7 +101,7 @@ def create_thumbnail(object, object_name, save_path):
 
     # setup render
     filename = object_name + "_preview.png"
-    filepath = save_path + "\\" + filename
+    filepath = os.path.join(save_path, filename)
     bpy.context.scene.render.filepath = filepath
     bpy.context.scene.render.engine = "CYCLES"
     object.select_set(True)
@@ -116,7 +131,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
         def apply_modifiers(obj, is_lod):
             # ctx = bpy.context.copy()
             # ctx['object'] = obj
-            with context.temp_override(object = obj):
+            with context.temp_override(object=obj, active_object=obj, selected_editable_objects=[obj], selected_objects=[obj]):
                 for _, m in enumerate(obj.modifiers):
                     try:
                         # with context.temp_override(modifier = m):
@@ -142,7 +157,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             bpy.ops.object.mode_set(mode='EDIT')
             if self.merge_by_distance:
-                bpy.ops.mesh.remove_doubles(use_unselected=True, threshold=0.001)
+                _mesh_merge_by_distance(use_unselected=True, threshold=0.001)
             if self.delete_loose:
                 bpy.ops.mesh.delete_loose(use_faces=True)
             bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
@@ -172,7 +187,7 @@ class ACACCF_OT_Proxy_remove_doubles(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.remove_doubles()
+        _mesh_merge_by_distance()
         bpy.ops.object.mode_set(mode='OBJECT')
         return{"FINISHED"}
     
@@ -211,15 +226,13 @@ class ACACCF_OT_apply_modifiers(bpy.types.Operator):
     def execute(self, context):
         
         def apply_modifiers(obj):
-            ctx = bpy.context.copy()
-            ctx['object'] = obj
-            for _, m in enumerate(obj.modifiers):
-                try:
-                    ctx['modifier'] = m
-                    bpy.ops.object.modifier_apply(ctx, modifier=m.name)
-                except RuntimeError:
-                    print(f"Error applying {m.name} to {obj.name}, removing it instead.")
-                    obj.modifiers.remove(m)
+            with context.temp_override(object=obj, active_object=obj, selected_editable_objects=[obj], selected_objects=[obj]):
+                for _, m in enumerate(obj.modifiers):
+                    try:
+                        bpy.ops.object.modifier_apply(modifier=m.name)
+                    except RuntimeError:
+                        print(f"Error applying {m.name} to {obj.name}, removing it instead.")
+                        obj.modifiers.remove(m)
 
             for m in obj.modifiers:
                 obj.modifiers.remove(m)
@@ -291,11 +304,14 @@ class ACACCF_OT_export(bpy.types.Operator):
             # create 2d script
             bpy.context.scene.render.engine = 'CYCLES'
             obj = bpy.context.active_object
-            symbol_script = mesh_to_symbol_new.run_script(props.save_path, start_obj=obj)
 
             # create 3d script
             mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder, ob = obj)
             
+            symbol_script = mesh_to_symbol_new.run_script(start_obj=obj)
+            # symbol_script = ""
+
+
             #get back to object mode
             bpy.ops.object.mode_set(mode='OBJECT')
             
@@ -341,14 +357,17 @@ class ACACCF_OT_export(bpy.types.Operator):
             print("file saved to " + target_filepath)
 
         # Create textures folder
-        texture_folder = props.save_path + "textures"
-        if not os.path.exists(props.save_path + "textures"):
+        texture_folder = os.path.join(props.save_path, "textures")
+        if not os.path.exists(texture_folder):
             os.mkdir(texture_folder)
 
 
 
         # get lp_xmlconverter path
-        preferences = bpy.context.preferences.addons[__package__].preferences
+        preferences = _get_addon_preferences(context)
+        if preferences is None:
+            self.report({'ERROR'}, "Addon preferences are unavailable.")
+            return {'CANCELLED'}
         lp_xmlconverter_path = preferences.LP_XMLConverter
         ac_version = preferences.ac_version
         
@@ -359,12 +378,12 @@ class ACACCF_OT_export(bpy.types.Operator):
                 object_dimensions, object_materials, object_surfaces = process_object(props, lod, False, thumbnail_path=texture_folder, lod_number=i )
 
 
-                convertion_result = subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', stdout=subprocess.PIPE)
+                convertion_result = subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name}_LOD{str(i)}.xml" "{props.save_path + props.object_name}_LOD{str(i)}.gsm"', stdout=subprocess.PIPE, shell=True)
                 #print(convertion_result.stdout.decode("utf-8"))
                 i += 1
             create_thumbnail(props.lod_0, props.object_name, texture_folder)
             process_lod_xml(props, object_dimensions, object_surfaces, object_materials,  ac_version, thumbnail_path=texture_folder)
-            convertion_result = subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
+            convertion_result = subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE, shell=True)
             #print(convertion_result.stdout.decode("utf-8"))
                 #subprocess.call(f'"{lp_xmlconverter_path}" xml2libpart "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', shell=True)
 
@@ -373,7 +392,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             lod = props.lod_0 if props.lod_0 else props.lod_1
             lod = context.active_object if not lod else lod
             process_object(props, lod, props.is_placable, thumbnail_path=texture_folder, lod_number=None )
-            convertion_result= subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE)
+            convertion_result= subprocess.run(f'"{lp_xmlconverter_path}" xml2libpart -img "{texture_folder}" "{props.save_path + props.object_name + ".xml"}" "{props.save_path + props.object_name}.gsm"', stdout=subprocess.PIPE, shell=True)
             print(convertion_result.stdout.decode("utf-8"))
 
         end_time = time()
@@ -404,8 +423,9 @@ class ACACCF_OT_export(bpy.types.Operator):
             props.object_name = bpy.path.basename(bpy.context.blend_data.filepath).replace(".blend", "")
 
         if props.save_path == "C:\\" or not props.save_path:
-            # Set the blender's file name as object name. 
-            props.save_path = os.path.dirname(bpy.context.blend_data.filepath) + "\\"
+            blend_dir = os.path.dirname(bpy.context.blend_data.filepath)
+            if blend_dir:
+                props.save_path = blend_dir + os.sep
         
         properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)

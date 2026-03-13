@@ -1,4 +1,5 @@
 import bpy, inspect
+from bpy.app.handlers import persistent
 from . import utils
 
 # This file handles the properties of objects. Those properties are the mirror of what can be seen in the "principal" tab in archicad. 
@@ -11,7 +12,6 @@ class AC_export_properties(bpy.types.PropertyGroup):
     save_path: bpy.props.StringProperty(name="save to", subtype="DIR_PATH", default="C:\\")
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
-    lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
 
 
@@ -84,17 +84,17 @@ class AC_single_prop(bpy.types.PropertyGroup):
 
 class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 
+    @staticmethod
     def add_handler(function, handler):
-        if not function in handler:
+        if function not in handler:
             handler.append(function)
 
+    @staticmethod
     def remove_handler(function, handler):
         if function in handler:
             handler.remove(function)
 
-
-
-    def ensure_default_props(self, context):
+    def ensure_default_props(self, context=None):
         preferences = bpy.context.preferences.addons[__package__].preferences
         # Ensure the default props are still in the list
 
@@ -158,14 +158,14 @@ class AC_PropertyGroup_props(bpy.types.PropertyGroup):
 
 
     collection: bpy.props.CollectionProperty(type=AC_single_prop)
-    active_user_index: bpy.props.IntProperty(update=ensure_default_props)
+    active_user_index: bpy.props.IntProperty(update=lambda self, context: self.ensure_default_props(context))
 
     def register():
         bpy.types.Scene.archicad_converter_props = bpy.props.PointerProperty(type=AC_PropertyGroup_props)
-        AC_PropertyGroup_props.add_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
+        AC_PropertyGroup_props.add_handler(_ensure_default_props_on_load, bpy.app.handlers.load_post)
     
     def unregister():
-        AC_PropertyGroup_props.remove_handler(AC_PropertyGroup_props.ensure_default_props, bpy.app.handlers.load_post)
+        AC_PropertyGroup_props.remove_handler(_ensure_default_props_on_load, bpy.app.handlers.load_post)
         del bpy.types.Scene.archicad_converter_props
 
 
@@ -201,3 +201,10 @@ def register():
 def unregister():
     for cls in classes:
         bpy.utils.unregister_class(cls)
+
+
+@persistent
+def _ensure_default_props_on_load(_dummy):
+    scene = bpy.context.scene
+    if scene is not None and hasattr(scene, "archicad_converter_props"):
+        scene.archicad_converter_props.ensure_default_props(bpy.context)

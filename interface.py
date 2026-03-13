@@ -1,6 +1,4 @@
 import bpy
-import os
-from . import properties
 
 class ACACCF_PT_Main(bpy.types.Panel):
     bl_label = "Archicad Converter"
@@ -60,7 +58,7 @@ class ACACCF_PT_Properties(bpy.types.Panel):
         layout = self.layout.column(align = False)
 
         top_part = layout.row(align = False)
-        top_part.template_list("AC_UL_props", "", bpy.context.scene.archicad_converter_props, "collection", bpy.context.scene.archicad_converter_props, "active_user_index")
+        top_part.template_list("AC_UL_props", "", context.scene.archicad_converter_props, "collection", context.scene.archicad_converter_props, "active_user_index")
 
         buttons_col = top_part.column(align=True)
         buttons_col.operator("acaccf.property_add", icon="ADD", text="")
@@ -71,7 +69,7 @@ class ACACCF_PT_Properties(bpy.types.Panel):
         buttons_col.operator("acaccf.property_down", icon="TRIA_DOWN", text="")
 
         
-        prop_group = bpy.context.scene.archicad_converter_props
+        prop_group = context.scene.archicad_converter_props
 
         if len(prop_group.collection) and prop_group.active_user_index < len(prop_group.collection):
             prop = prop_group.collection[prop_group.active_user_index]

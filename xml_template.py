@@ -140,7 +140,7 @@ endif
 
 !!!-------   Symbole 2D généré par l'extension --------
 
-{symbol_script if symbol_script else "PROJECT2 0,  1"}
+{symbol_script if symbol_script else "PROJECT2 3, 270, 2"}
 ]]>
 </Script_2D>
 

@@ -6,27 +6,29 @@ from . import interface, operators, properties
 bl_info = {
     "name": "Archicad exporter",
     "author": "Clovis Flayols",
-    "version": (1, 2, 2),
-    "blender": (3, 3, 0),
-    "location": "View3D > Toolshelf",
+    "version": (1, 3, 0),
+    "blender": (5, 0, 0),
+    "location": "View3D > Sidebar > AC ▣",
     "description": "Archicad object automatic creation. With a bit of luck.",
     "category": "Export",
 }
 
 
-class archicad_exporter(bpy.types.AddonPreferences):
+class ARCHICADEXPORTER_AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
     LP_XMLConverter: bpy.props.StringProperty(
         name= "LP_XMLConverter", 
         description="LP_XMLConverter.exe is located in archicad installation folder.", 
-        default="C:\\Program Files\\GRAPHISOFT\\ARCHICAD 27\\LP_XMLConverter.exe", 
+        default="C:\\Program Files\\GRAPHISOFT\\ARCHICAD 28\\LP_XMLConverter.exe", 
         subtype="FILE_PATH")
     ac_version: bpy.props.EnumProperty(name="Archicad version", items=[
         ("40", "Archicad 23", "Archicad 23"), 
         ("41", "Archicad 24", "Archicad 24"), 
         ("43", "Archicad 25", "Archicad 25"),
         ("44", "Archicad 26", "Archicad 26"),
+        ("45", "Archicad 27", "Archicad 27"),
+        ("46", "Archicad 28", "Archicad 28"),
         ])
     camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523), unit='ROTATION', subtype="EULER")
     default_pen: bpy.props.IntProperty(name="default pen", default=5)
@@ -59,7 +61,7 @@ class archicad_exporter(bpy.types.AddonPreferences):
         layout.prop(self, "create_thumbnail", text="générer preview automatique")
 
 def register():
-    bpy.utils.register_class(archicad_exporter)
+    bpy.utils.register_class(ARCHICADEXPORTER_AddonPreferences)
     properties.register()
     operators.register()
     interface.register()
@@ -68,7 +70,7 @@ def unregister():
     operators.unregister()
     interface.unregister()
     properties.unregister()
-    bpy.utils.unregister_class(archicad_exporter)
+    bpy.utils.unregister_class(ARCHICADEXPORTER_AddonPreferences)
 
 if __name__ == "__main__":
     register()
