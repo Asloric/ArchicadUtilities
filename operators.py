@@ -2,7 +2,7 @@ import bpy
 import subprocess
 import os
 from time import time
-from . import properties, utils
+from . import mesh_to_symbol, properties, utils
 
 
 def create_thumbnail(object, object_name, save_path):
@@ -276,7 +276,7 @@ class ACACCF_OT_export(bpy.types.Operator):
         start_time = time()
 
         props = context.scene.acaccf
-        from . import mesh_to_gdl, mesh_to_symbol_new, xml_template, xml_lod
+        from . import mesh_to_gdl, xml_template, xml_lod
         
         def process_object(props, lod, is_placable, thumbnail_path, lod_number= None, ):
             if lod_number is not None:
@@ -308,7 +308,7 @@ class ACACCF_OT_export(bpy.types.Operator):
             # create 3d script
             mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder, ob = obj)
             
-            symbol_script = mesh_to_symbol_new.run_script(start_obj=obj)
+            symbol_script = mesh_to_symbol.run_script(start_obj=obj)
             # symbol_script = ""
 
 
@@ -364,12 +364,12 @@ class ACACCF_OT_export(bpy.types.Operator):
 
 
         # get lp_xmlconverter path
-        preferences = _get_addon_preferences(context)
-        if preferences is None:
+        addon = bpy.context.preferences.addons.get(__package__)
+        if not addon or addon.preferences is None:
             self.report({'ERROR'}, "Addon preferences are unavailable.")
             return {'CANCELLED'}
-        lp_xmlconverter_path = preferences.LP_XMLConverter
-        ac_version = preferences.ac_version
+        lp_xmlconverter_path = addon.preferences.LP_XMLConverter
+        ac_version = addon.preferences.ac_version
         
         # Process the meshed if lod or single
         if props.export_lod and props.lod_0 and props.lod_1:
@@ -504,10 +504,10 @@ class ACCTEST_OT_dummy(bpy.types.Operator):
     bl_label = "dummy"
 
     def execute(self, context):
-        from . import mesh_to_symbol_new
+        from . import mesh_to_symbol
 
         obj = bpy.context.active_object
-        mesh_to_symbol_new.run_script(start_obj=obj)
+        mesh_to_symbol.run_script(start_obj=obj)
         return {"FINISHED"}
 
 

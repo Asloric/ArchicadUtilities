@@ -41,7 +41,6 @@ newimage = Image.fromarray(convert(List, 0, 255, np.uint8))
 blurImage = newimage.filter(ImageFilter.GaussianBlur(2))
 Diff = PIL.ImageChops.difference(blurImage, newimage)
 Diff = Diff.point(lambda p: p > threshold and 255)  
-#Diff.save('D:\\Users\\Asloric\\Documents\\Workspace\\Work\\Ensam\\S8\\Projet\\archicad\\Emprise projet blur.tif')
 Mask = np.asarray(Diff)
 Diff.show()
 for x in range(0,List.shape[1]):
