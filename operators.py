@@ -2,24 +2,14 @@ import bpy
 import subprocess
 import os
 from time import time
-import shutil
 from . import properties, utils
 
 
-def _get_addon_preferences(context=None):
-    context = context or bpy.context
-    addon = context.preferences.addons.get(__package__)
-    return addon.preferences if addon else None
-
-
-def _mesh_merge_by_distance(**kwargs):
-    if hasattr(bpy.ops.mesh, "merge_by_distance"):
-        return bpy.ops.mesh.merge_by_distance(**kwargs)
-    return bpy.ops.mesh.remove_doubles(**kwargs)
-
 def create_thumbnail(object, object_name, save_path):
-    preferences = _get_addon_preferences()
-    if preferences is None or not preferences.create_thumbnail:
+    addon = bpy.context.preferences.addons.get(__package__)
+    if not addon:
+        return
+    if addon.preferences is None or not addon.preferences.create_thumbnail:
         return
     # Switch to scene
     current_scene = bpy.context.scene
@@ -57,7 +47,7 @@ def create_thumbnail(object, object_name, save_path):
             camera = bpy.context.scene.objects.get("AC_Camera_3D")
             bpy.context.scene.camera = camera
         else:
-            bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=preferences.camera_angle, scale=(1, 1, 1))
+            bpy.ops.object.camera_add(enter_editmode=False, align='VIEW', location=(0, 0, 0), rotation=addon.preferences.camera_angle, scale=(1, 1, 1))
             bpy.context.scene.camera.name = "AC_Camera_3D"
             camera = bpy.context.scene.camera
     elif bpy.context.scene.camera.name != "AC_Camera_3D":
@@ -77,7 +67,7 @@ def create_thumbnail(object, object_name, save_path):
 
 
     camera.location = 0,0,0
-    camera.rotation_euler = preferences.camera_angle
+    camera.rotation_euler = addon.preferences.camera_angle
 
     # sun = False
     # for ob in bpy.context.scene.objects:
@@ -87,8 +77,8 @@ def create_thumbnail(object, object_name, save_path):
     # if not sun:
     #     bpy.ops.object.light_add(type='SUN', align='WORLD', location=(0, 0, 0), rotation=(0.785398, 0.785398, -1.5708), scale=(1, 1, 1))
 
-    bpy.context.scene.render.resolution_y = preferences.preview_resolution
-    bpy.context.scene.render.resolution_x = preferences.preview_resolution
+    bpy.context.scene.render.resolution_y = addon.preferences.preview_resolution
+    bpy.context.scene.render.resolution_x = addon.preferences.preview_resolution
     bpy.context.scene.render.use_freestyle = False
 
     if not bpy.context.scene.world:
@@ -113,14 +103,21 @@ def create_thumbnail(object, object_name, save_path):
     render_scene.collection.objects.unlink(object)
     bpy.context.window.scene = current_scene
 
+
 class ACACCF_OT_apply(bpy.types.Operator):
     bl_idname = "acaccf.apply"
     bl_label = "Apply object"
     bl_description = "Apply modifiers and join objects. Mendatory step for proper export."
 
-    merge_by_distance: bpy.props.BoolProperty(default=True, name="merge by distance", description="Merge vertices by distance")
-    delete_loose: bpy.props.BoolProperty(default=True, name="delete_loose", description="Delete loose geometry")
-    lods: bpy.props.BoolProperty(default=True, name="Compute LODs", description="If subdivision surface is used, also compute a version with level 0")
+    merge_by_distance: bpy.props.BoolProperty(default=True,
+                                              name="merge by distance",
+                                              description="Merge vertices by distance")
+    delete_loose: bpy.props.BoolProperty(default=True,
+                                         name="delete_loose",
+                                         description="Delete loose geometry")
+    lods: bpy.props.BoolProperty(default=True,
+                                 name="Compute LODs",
+                                 description="If subdivision surface is used, also compute a version with level 0")
     
 
     @classmethod
@@ -157,7 +154,7 @@ class ACACCF_OT_apply(bpy.types.Operator):
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             bpy.ops.object.mode_set(mode='EDIT')
             if self.merge_by_distance:
-                _mesh_merge_by_distance(use_unselected=True, threshold=0.001)
+                bpy.ops.mesh.remove_doubles(use_unselected=True, threshold=0.001)
             if self.delete_loose:
                 bpy.ops.mesh.delete_loose(use_faces=True)
             bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
@@ -181,16 +178,18 @@ class ACACCF_OT_apply(bpy.types.Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
 
+
 class ACACCF_OT_Proxy_remove_doubles(bpy.types.Operator):
     bl_idname = "acaccf.remove_doubles"
     bl_label = "remove doubles"
 
     def execute(self, context):
         bpy.ops.object.mode_set(mode='EDIT')
-        _mesh_merge_by_distance()
+        bpy.ops.mesh.remove_doubles()
         bpy.ops.object.mode_set(mode='OBJECT')
         return{"FINISHED"}
-    
+
+
 class ACACCF_OT_Proxy_delete_loose(bpy.types.Operator):
     bl_idname = "acaccf.delete_loose"
     bl_label = "delete loose"
@@ -200,7 +199,8 @@ class ACACCF_OT_Proxy_delete_loose(bpy.types.Operator):
         bpy.ops.mesh.delete_loose()
         bpy.ops.object.mode_set(mode='OBJECT')
         return{"FINISHED"}
-    
+
+
 class ACACCF_OT_Proxy_connect_coplanar(bpy.types.Operator):
     bl_idname = "acaccf.connect_coplanar"
     bl_label = "connect coplanar"
@@ -210,7 +210,7 @@ class ACACCF_OT_Proxy_connect_coplanar(bpy.types.Operator):
         bpy.ops.mesh.vert_connect_nonplanar(angle_limit=0.0174533)
         bpy.ops.object.mode_set(mode='OBJECT')
         return{"FINISHED"}
-    
+
 
 class ACACCF_OT_apply_modifiers(bpy.types.Operator):
     bl_idname = "acaccf.apply_modifiers"
@@ -429,7 +429,8 @@ class ACACCF_OT_export(bpy.types.Operator):
         
         properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)
-        
+
+
 class AC_OT_property_add(bpy.types.Operator):
     bl_idname = "acaccf.property_add"
     bl_label = "add property"
@@ -441,6 +442,7 @@ class AC_OT_property_add(bpy.types.Operator):
         item.identifier = "property_" + str(len(prop.collection))
         prop.active_user_index = len(prop.collection) - 1
         return {"FINISHED"}
+
 
 class AC_OT_property_remove(bpy.types.Operator):
     bl_idname = "acaccf.property_remove"
@@ -463,6 +465,7 @@ class AC_OT_property_remove(bpy.types.Operator):
             prop.active_user_index = prop.active_user_index
         return {"FINISHED"}
 
+
 class AC_OT_property_up(bpy.types.Operator):
     bl_idname = "acaccf.property_up"
     bl_label = "up property"
@@ -478,6 +481,7 @@ class AC_OT_property_up(bpy.types.Operator):
         prop.collection.move(prop.active_user_index, prop.active_user_index-1)
         prop.active_user_index -= 1
         return {"FINISHED"}
+
 
 class AC_OT_property_down(bpy.types.Operator):
     bl_idname = "acaccf.property_down"
@@ -506,6 +510,7 @@ class ACCTEST_OT_dummy(bpy.types.Operator):
         mesh_to_symbol_new.run_script(start_obj=obj)
         return {"FINISHED"}
 
+
 classes = [
     ACACCF_OT_export,
     ACCTEST_OT_dummy,
@@ -524,8 +529,6 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-
-
 
 
 def unregister():
