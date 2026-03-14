@@ -1,3 +1,14 @@
+# 3D optimiser.py - Standalone GDL script optimizer.
+# NOT part of the Blender addon. Run directly as a Python script (not importable).
+#
+# Purpose: Read a raw GDL .txt file, deduplicate TEVE vertices and EDGE entries,
+# then write a cleaned version. Functionally equivalent to the TEVE/EDGE class logic
+# in mesh_to_gdl.py but O(n²) instead of O(1) (no dict lookup) and text-file based.
+#
+# Also re-normalizes textured DEFINE MATERIAL lines to always use type 21 + IND(TEXTURE,...).
+#
+# NOTE: Hardcoded paths below. Change Folder, Sub_folder1, FIle_name, Lod before running.
+# WARNING: Use_soft_edges=True (edge status=2) makes objects invisible in Archicad sketch rendering mode.
 Folder = "Mobilier"
 Sub_folder1 = "Tables"
 FIle_name = "BIBELO_SWIMM_Table Duo"
@@ -45,6 +56,16 @@ else:
     edge_n_end = 0
 
 def DO_IT(vert_list,edge_list,pgon_list):
+    """Optimize one BODY group of GDL geometry.
+    Steps:
+      1. Deduplicate TEVE vertices: find identical (x,y,z,u,v) tuples, remap indices.
+      2. Reassign EDGE vertex indices after dedup; strip face adjacency (set to -1,-1).
+      3. Deduplicate EDGE entries: same direction = duplicate, reversed = negative index (mirror).
+      4. Remap PGON edge references to new deduplicated edge indices.
+      5. Return list of GDL TEVE/EDGE/PGON strings.
+
+    NOTE: Uses O(n²) nested loops for dedup. The mesh_to_gdl.py addon uses O(1) dict lookup instead.
+    """
     vert_indexes = {}
     removed_vert = {}
     new_vert_list = []

@@ -17,25 +17,35 @@ bl_info = {
 class ARCHICADEXPORTER_AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
+    # NOTE: Default path references AC27, but the ac_version enum below only lists up to AC26.
+    # The LP_XMLConverter from AC27+ may still work; these paths just need manual updating.
     LP_XMLConverter: bpy.props.StringProperty(
         name= "LP_XMLConverter", 
         description="LP_XMLConverter.exe is located in archicad installation folder.", 
         default="C:\\Program Files\\GRAPHISOFT\\ARCHICAD 28\\LP_XMLConverter.exe", 
         subtype="FILE_PATH")
+    # NOTE: The enum values (40, 41, 43, 44) are Archicad's internal format/API version codes,
+    # not the AC version number itself. These are passed directly into the XML <Symbol Version="..."> attribute.
+    # AC25 = 43, AC26 = 44. Note the gap (no 42), meaning there is no AC in that slot.
     ac_version: bpy.props.EnumProperty(name="Archicad version", items=[
-        ("40", "Archicad 23", "Archicad 23"), 
-        ("41", "Archicad 24", "Archicad 24"), 
+        ("40", "Archicad 23", "Archicad 23"),
+        ("41", "Archicad 24", "Archicad 24"),
         ("43", "Archicad 25", "Archicad 25"),
         ("44", "Archicad 26", "Archicad 26"),
         ("45", "Archicad 27", "Archicad 27"),
         ("46", "Archicad 28", "Archicad 28"),
         ])
+    # Euler angles for the thumbnail preview camera (≈70° tilt, 30° rotation - classic isometric-ish view)
     camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523), unit='ROTATION', subtype="EULER")
+    # These pen/line/hatch defaults become the initial values for the mandatory Archicad parameters
+    # (PenAttribute_1, lineTypeAttribute_1, fillAttribute_1, etc.) in properties.py ensure_default_props.
     default_pen: bpy.props.IntProperty(name="default pen", default=5)
     default_line: bpy.props.IntProperty(name="default line", default=1)
     default_hatch: bpy.props.IntProperty(name="default line", default=21)
     default_pen_bg_hatch: bpy.props.IntProperty(name="default pen", default=0)
     default_pen_fg_hatch: bpy.props.IntProperty(name="default pen", default=41)
+    # default_surface=0 means "use GDL-defined material" (no Archicad surface override).
+    # Any non-zero value would reference an Archicad surface index.
     default_surface: bpy.props.IntProperty(name="default surface", default=0)
     default_material: bpy.props.IntProperty(name="default material", default=0)
     preview_resolution: bpy.props.IntProperty(name="preview resolution", default=256)

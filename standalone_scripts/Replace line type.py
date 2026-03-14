@@ -1,3 +1,21 @@
+# Replace line type.py - Standalone GDL edge status batch replacer.
+# NOT part of the Blender addon. Run directly.
+#
+# Purpose: Replace the line-type / status value on all EDGE commands in a GDL .txt file.
+# Useful for bulk converting edge visibility mode in an existing GDL script.
+#
+# Edge status values:
+#   0 = hard edge (visible crease)
+#   1 = hidden (not shown)
+#   2 = smooth (shaded, no visible edge)
+#
+# NOTE: There is a bug in the replacement logic below.
+# The replace call: line.replace(f", {replace_by}\n", f", {replace_by}\n")
+# replaces the string with itself (source == target), so it does nothing.
+# The intended logic was probably to replace any existing final status value
+# with replace_by, but the implementation is incorrect.
+#
+# NOTE: Hardcoded paths. Change before use.
 filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\tempfile.txt"
 target_filepath = "C:\\Users\\Asloric\\PycharmProjects\\Convert archicad object\\target.txt"
 keep_material = True

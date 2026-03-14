@@ -2,11 +2,23 @@ import datetime
 import bpy
 import re
 
+# xml_template.py: Generates the full Archicad GDL Library Object XML for a single mesh.
+#
+# The XML structure contains:
+#   Script_1D: Constants (LOD level enum values)
+#   Script_2D: 2D symbol (plan view) - either from mesh_to_symbol or PROJECT2 fallback
+#   Script_3D: 3D mesh (GDL TEVE/EDGE/PGON body from mesh_to_gdl)
+#   Script_PR: Properties script (empty)
+#   Script_UI/VL: UI and value-list scripts for LOD/display parameters
+#   ParamSection: Object parameters (A, B, ZZYZX dimensions + user-defined + surface overrides)
+#   GDLPict: Embedded texture images (referenced by DEFINE TEXTURE in Script_3D)
+#   Picture: Thumbnail preview PNG
+
 def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, bound_x:float, bound_y:float, bound_z:float, shift_z, lod, Textures_ids, surfaces = [], materials = [],  ac_version:int=43, thumbnail_path=None):
 	'''
 	object_index: 12 char, a-f, A-F, 0-9
 	is_placable: boolean. appears or not in the search
-	symbol_script: returned by mesh_to_symbol()
+	symbol_script: returned by mesh_to_symbol() - may be None, falls back to PROJECT2
 	mesh_script: return by mesh_to_gdl()
 	bound_x: X max dimension of object
 	bound_y: Y max dimension of object
@@ -19,11 +31,13 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 		gdl_script += item + "\n"
 
 
-	# Defines the attrubues parameters
+	# Defines the attributes parameters
 	attributes_str = ""
+	# old_guid_str: if set, reuse the GUID from a previous export (preserves Archicad object identity on re-export).
 	old_guid_str = ""
 	preferences = bpy.context.preferences.addons[__package__].preferences
 
+	# (Commented-out GUID validation regex - was intended to validate old_GUID format)
 	# guid_patern = re.compile("[0-9a-fA-F]{8}([+\-/*.,; ]*[0-9a-fA-F]{4}){2}([+\-/*.,; ]*[0-9a-fA-F]{2}){8}")
 
 	for propattr in bpy.context.scene.archicad_converter_props.collection:
@@ -39,8 +53,10 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 		if propattr.ac_type == "String":
 			if propattr.identifier == "old_GUID":
-				# if guid_patern.match(propattr.String):
-				old_guid_str = propattr.String	
+				# Special property: extract GUID to use as MainGUID instead of generating a new one.
+				# This preserves the object's identity in Archicad across re-exports.
+				# (Commented-out: guid_patern.match(propattr.String) validation)
+				old_guid_str = propattr.String
 				continue
 			
 			attributes_str += f"""
@@ -56,6 +72,9 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 
 		else:
+			# NOTE: eval() is used here to dynamically read the property value by type name.
+			# e.g. propattr.ac_type="Length" → eval("propattr.Length") → reads the Length float value.
+			# This works because AC_single_prop defines one property per type name (Length, Angle, etc.).
 			attributes_str += f"""
 			<{propattr.ac_type} Name="{propattr.identifier}">
 				<Description><![CDATA["{propattr.name}"]]></Description>
@@ -96,6 +115,11 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 		'''
 
 
+	# GUID format when no old_GUID is set:
+	# "AC0000CF-0000-70D{lod}-{year}-00{month:02}{day:02}{hour:02}{min:02}{sec:02}"
+	# e.g. lod=0 → "AC0000CF-0000-70D0-2024-001201143052"
+	# The lod digit in segment 3 distinguishes LOD variants of the same export.
+	# This timestamp-based GUID is NOT universally unique but is deterministic for a given export time.
 	return f'''<?xml version="1.0" encoding="UTF-8"?>
 <Symbol IsArchivable="false" IsPlaceable="{"true" if is_placable else "false"}" MainGUID="{old_guid_str if old_guid_str else f"AC0000CF-0000-70D{lod if lod else 0}-{date.year}-00{date.month:02}{date.day:02}{date.hour:02}{date.minute:02}{date.second:02}"}" MigrationValue="Normal" Owner="0" Signature="0" Version="{str(ac_version)}">
 <Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
@@ -107,6 +131,8 @@ def get_xml(object_name, is_placable:bool, symbol_script:str, mesh_script:str, b
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
+! MUL2 scales the 2D coordinate system so the symbol fits A×B regardless of original size.
+! A and B are the Archicad object parameters (width/depth), set by the user in Archicad.
 MUL2 A*{(1/bound_x) if bound_x else 0}, B*{(1/bound_y) if bound_y else 0}
 pen     penAttribute_1
 set line_type lineTypeAttribute_1
@@ -166,12 +192,18 @@ endif
 if _iDetlevel3D = DETLEVEL_3D_OFF then end
 
 
+! ADDZ shifts the model up so its lowest point is at Z=0 (floor plane).
+! shift_z = -min_z from mesh_to_gdl (the negated minimum vertex Z).
 ADDZ {shift_z}
 !ROTZ 180
+! Scale the model to fit within A × B × ZZYZX (the Archicad parametric dimensions).
+! Division by bound_* converts from absolute units to a normalized 0..1 space,
+! then multiplied by A/B/ZZYZX to allow user-driven resizing in Archicad.
 MULX A*{(1/bound_x) if bound_x else 0}
 MULY B*{(1/bound_y) if bound_y else 0}
 MULZ ZZYZX*{(1/bound_z) if bound_z else 0}
 {gdl_script}
+! EXIT declares the object's hotspot extents (height, width, depth) for Archicad snapping.
 EXIT ZZYZX, A, B
 ]]>
 </Script_3D>
