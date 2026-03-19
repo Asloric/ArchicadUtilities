@@ -291,6 +291,7 @@ class ACACCF_OT_export(bpy.types.Operator):
         if not prop.export_lod:
             layout.prop(prop, "is_placable")
 
+        layout.prop(prop, "generate_2d")
     
     @classmethod
     def poll(cls, context):
@@ -334,8 +335,10 @@ class ACACCF_OT_export(bpy.types.Operator):
             # create 3d script
             mesh_script, Textures_ids, z_shift = mesh_to_gdl.run_script(props.smooth_angle, texture_folder, ob = obj)
             
-            symbol_script = mesh_to_symbol.run_script(start_obj=obj)
-            # symbol_script = ""
+            if props.generate_2d :
+                symbol_script = mesh_to_symbol.run_script(start_obj=obj)
+            else:
+                symbol_script = None
 
 
             #get back to object mode

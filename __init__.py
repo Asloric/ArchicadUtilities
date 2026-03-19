@@ -34,6 +34,7 @@ class ARCHICADEXPORTER_AddonPreferences(bpy.types.AddonPreferences):
         ("44", "Archicad 26", "Archicad 26"),
         ("45", "Archicad 27", "Archicad 27"),
         ("46", "Archicad 28", "Archicad 28"),
+        ("47", "Archicad 28", "Archicad 29"),
         ])
     # Euler angles for the thumbnail preview camera (≈70° tilt, 30° rotation - classic isometric-ish view)
     camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523), unit='ROTATION', subtype="EULER")
@@ -42,7 +43,7 @@ class ARCHICADEXPORTER_AddonPreferences(bpy.types.AddonPreferences):
     default_pen: bpy.props.IntProperty(name="default pen", default=5)
     default_line: bpy.props.IntProperty(name="default line", default=1)
     default_hatch: bpy.props.IntProperty(name="default line", default=21)
-    default_pen_bg_hatch: bpy.props.IntProperty(name="default pen", default=0)
+    default_pen_bg_hatch: bpy.props.IntProperty(name="default pen", default=19)
     default_pen_fg_hatch: bpy.props.IntProperty(name="default pen", default=41)
     # default_surface=0 means "use GDL-defined material" (no Archicad surface override).
     # Any non-zero value would reference an Archicad surface index.

@@ -18,6 +18,7 @@ class AC_export_properties(bpy.types.PropertyGroup):
     export_lod: bpy.props.BoolProperty(name="export as LOD", default=False)
     lod_1: bpy.props.PointerProperty(name="Coarse", type=bpy.types.Object)
     lod_0: bpy.props.PointerProperty(name="Detailed", type=bpy.types.Object)
+    generate_2d: bpy.props.BoolProperty(name="Generate_2D (Experimental)", default=False)
 
 
     def register():

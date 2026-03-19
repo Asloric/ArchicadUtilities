@@ -141,11 +141,8 @@ set fill fillAttribute_1
 ! 2D Detail Level
 ! ==============================================================================
 
-_iDetlevel2D = DETLEVEL_2D_DETAILED
-call "DetlevelFunctionMacro" parameters	iDetlevel2D	= iDetlevel2D,
-								returned_parameters _iDetlevel2D
 
-if _iDetlevel2D = DETLEVEL_2D_DRAFT then
+if _iDetlevel2D = OBJECT_SCHEMATIC then
 	POLY2_B 5, 1+2+64, fillfgpen_1, fillbgpen_1, 
 			A*(-0.5), B*(-0.5), 1+32,
 			A*0.5, B*(-0.5), 1+32,
@@ -157,7 +154,8 @@ endif
 
 
 !!!--- Celui ci affiche la projection en 2D du 3D ---
-!PROJECT2 3, 270, 2
+! pen fillfgpen_1
+! PROJECT2{"{2}"} 3, 270, 3+32+1024+16, fillbgpen_1
 !END
 
 !!!--- Celui ci affiche le contenu de "Symbole 2D" ---
@@ -166,7 +164,11 @@ endif
 
 !!!-------   Symbole 2D généré par l'extension --------
 
-{symbol_script if symbol_script else "PROJECT2 3, 270, 2"}
+{symbol_script if symbol_script else """
+! 2D generation was disabled for this object at export.
+pen fillfgpen_1
+PROJECT2{2} 3, 270, 3+32+1024+16, fillbgpen_1
+END"""}
 ]]>
 </Script_2D>
 
@@ -178,18 +180,13 @@ endif
 ! 3D Detail Level
 ! ==============================================================================
 
-_iDetlevel3D = DETLEVEL_3D_DETAILED
-call "DetlevelFunctionMacro" parameters	iDetlevel3D	= iDetlevel3D,
-								returned_parameters _iDetlevel3D
 
-if _iDetlevel3D = DETLEVEL_3D_DRAFT then
+if _iDetlevel3D = OBJECT_SCHEMATIC then
 	ADDX A*(-0.5)
 	ADDY B*(-0.5)
 	BLOCK A, B, ZZYZX
 	end
 endif
-
-if _iDetlevel3D = DETLEVEL_3D_OFF then end
 
 
 ! ADDZ shifts the model up so its lowest point is at Z=0 (floor plane).
@@ -312,21 +309,44 @@ EXIT ZZYZX, A, B
 
 <Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-! const values for iDetlevel3D
-DETLEVEL_3D_MVO			= 1
-DETLEVEL_3D_SCSENS		= 2
-DETLEVEL_3D_DETAILED	= 3
-DETLEVEL_3D_SIMPLE		= 4
-DETLEVEL_3D_DRAFT		= 5
-DETLEVEL_3D_OFF			= 6
+! const values for parameter iDetlevel2D and/or iDetLev3D
+OBJECT_SCHEMATIC	= 1
+OBJECT_SIMPLIFIED	= 2
+OBJECT_FULL			= 3
 
-! const values for iDetlevel2D
-DETLEVEL_2D_MVO			= 1
-DETLEVEL_2D_SCSENS		= 2
-DETLEVEL_2D_DETAILED	= 3
-DETLEVEL_2D_SIMPLE		= 4
-DETLEVEL_2D_DRAFT		= 5
-DETLEVEL_2D_SYMBOLIC	= 6
+_iDetlevel2D = OBJECT_FULL
+_iDetlevel3D = OBJECT_FULL
+_temp = 3
+
+IF iDetlevel2D = 0 THEN
+	if GLOB_SCRIPT_TYPE = 2 then
+	success = LIBRARYGLOBAL("Objects_MVOSettings.gsm", "iObjectDetlevel2D", _temp) ! Archicad 28 libpart
+		if success THEN
+			_iDetlevel2D = _temp
+		endif
+	success = LIBRARYGLOBAL("DetlevelFunctionMacro.gsm", "iDetlevel2D", _temp) ! Archicad 27 monolithic library
+		if success THEN
+			_iDetlevel2D = _temp
+		endif
+	endif
+ELSE
+	_iDetlevel2D = iDetlevel2D
+ENDIF
+
+IF iDetlevel3D = 0 THEN
+	if GLOB_SCRIPT_TYPE = 3 then
+	success = LIBRARYGLOBAL("Objects_MVOSettings.gsm", "iObjectDetlevel3D", _temp) ! Archicad 28 libpart
+		if success THEN
+			_iDetlevel3D = _temp
+		endif
+	success = LIBRARYGLOBAL("DetlevelFunctionMacro.gsm", "iDetlevel3D", _temp) ! Archicad 27 monolithic library
+		if success THEN
+			_iDetlevel3D = _temp
+		endif
+	endif
+ELSE
+	_iDetlevel3D = iDetlevel3D
+ENDIF
 ]]>
 </Script_1D>
 
@@ -347,14 +367,14 @@ DETLEVEL_2D_SYMBOLIC	= 6
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 values{"{2}"} "iDetlevel3D",
-			1, `Selon options vue`,
+			0, `Selon options vue`,
 			3, `Détaillé`,
-			5, "Simple"
+			1, "Simple"
 			
 values{"{2}"} "iDetlevel2D",
-			1, `Selon options vue`,
+			0, `Selon options vue`,
 			3, `Détaillé`,
-			5, "Simple"
+			1, "Simple"
 ]]>
 </Script_VL>
 
