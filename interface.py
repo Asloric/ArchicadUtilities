@@ -184,7 +184,7 @@ class ACACCF_PT_Export(bpy.types.Panel):
         if not prop.export_lod:
             layout.prop(prop, "is_placable")
 
-        layout.operator("acaccf.export", text="Export object")
+        layout.operator("acaccf.export_apply_warning", text="Export object")
 
 
 classes = [

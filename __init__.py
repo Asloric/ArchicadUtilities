@@ -6,7 +6,7 @@ from . import interface, operators, properties
 bl_info = {
     "name": "Archicad exporter",
     "author": "Clovis Flayols",
-    "version": (1, 3, 0),
+    "version": (1, 3, 1),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > AC ▣",
     "description": "Archicad object automatic creation. With a bit of luck.",
@@ -34,7 +34,7 @@ class ARCHICADEXPORTER_AddonPreferences(bpy.types.AddonPreferences):
         ("44", "Archicad 26", "Archicad 26"),
         ("45", "Archicad 27", "Archicad 27"),
         ("46", "Archicad 28", "Archicad 28"),
-        ("47", "Archicad 28", "Archicad 29"),
+        ("47", "Archicad 29", "Archicad 29"),
         ])
     # Euler angles for the thumbnail preview camera (≈70° tilt, 30° rotation - classic isometric-ish view)
     camera_angle: bpy.props.FloatVectorProperty(name="icon camera angle", default=(1.222, 0.0, 0.523), unit='ROTATION', subtype="EULER")

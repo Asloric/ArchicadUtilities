@@ -273,6 +273,7 @@ class ACACCF_OT_apply_modifiers(bpy.types.Operator):
 class ACACCF_OT_export(bpy.types.Operator):
     bl_idname = "acaccf.export"
     bl_label = "export"
+    apply_transforms: bpy.props.BoolProperty(default=False)
 
     def draw(self, context):
         prop = context.scene.acaccf
@@ -312,6 +313,9 @@ class ACACCF_OT_export(bpy.types.Operator):
 
             # Duplicate selected object
             bpy.ops.object.duplicate(linked=False)
+
+            if self.apply_transforms:
+                bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
             # get object dimensions
             size_x = context.active_object.dimensions.x
@@ -469,6 +473,51 @@ class ACACCF_OT_export(bpy.types.Operator):
         properties.AC_PropertyGroup_props.ensure_default_props(context.scene.archicad_converter_props, context)
         return context.window_manager.invoke_props_dialog(self)
 
+class ACACCF_OT_export_apply_warning(bpy.types.Operator):
+    bl_idname = "acaccf.export_apply_warning"
+    bl_label = "Transforms Not Applied"
+
+    def invoke(self, context, event):
+        if context.active_object is None:
+            self.report({'ERROR'}, "No active object to export.")
+            return {'CANCELLED'}
+        if context.active_object.type != "MESH":
+            self.report({'ERROR'}, "Active object must be a mesh.")
+            return {'CANCELLED'}
+        if context.active_object.data is None or len(context.active_object.data.vertices) == 0:
+            self.report({'ERROR'}, "Active object has no geometry.")
+            return {'CANCELLED'}
+        if tuple(context.active_object.scale) != (1, 1, 1) or tuple(context.active_object.rotation_euler) != (0, 0, 0) or tuple(context.active_object.location) != (0, 0, 0):
+            return context.window_manager.invoke_popup(self)
+        return bpy.ops.acaccf.export('INVOKE_DEFAULT')
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.label(text="Transforms not applied.", icon='ERROR')
+        layout.label(text="All transforms of obect should be applied before export." \
+        "Error may occur in Archicad otherwise.")
+
+        layout.separator()
+
+        row = layout.row(align=True)
+
+        op = row.operator(
+            "acaccf.export",
+            text="Apply and continue",
+            icon='CHECKMARK'
+        )
+        op.apply_transforms = True
+
+        op = row.operator(
+            "acaccf.export",
+            text="Continue anyway",
+            icon='FORWARD'
+        )
+        op.apply_transforms = False
+
+    def execute(self, context):
+        return {'FINISHED'}
 
 class AC_OT_property_add(bpy.types.Operator):
     bl_idname = "acaccf.property_add"
@@ -555,6 +604,7 @@ class ACCTEST_OT_dummy(bpy.types.Operator):
 
 classes = [
     ACACCF_OT_export,
+    ACACCF_OT_export_apply_warning,
     ACCTEST_OT_dummy,
     ACACCF_OT_apply,
     AC_OT_property_add,
